@@ -320,7 +320,7 @@ body {
     display: inline-flex;
     white-space: nowrap;
     padding-left: 100%;
-    animation: ticker 60s linear infinite;
+    animation: ticker 80s linear infinite;
 }
 
 .ticker-item {

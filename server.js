@@ -118,7 +118,7 @@ app.get('/api/news', async (req, res) => {
         // Return up to 10 latest headlines
         const headlines = data.items.slice(0, 10).map(item => item.title);
 
-        newsCache.set(cacheKey, { headlines }, 3600); // cache for 1 hour
+        newsCache.set(cacheKey, { headlines }, 600); // cache for 1 hour
         res.json({ headlines });
     } catch (err) {
         console.error('Error fetching news:', err);
