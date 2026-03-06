@@ -24,6 +24,7 @@
         <div class="top-row">
             <div class="glass-panel widget-quran">
                 <div id="quran-text" dir="rtl" class="arabic-text">Chargement du verset...</div>
+                <div id="quran-info" dir="rtl" class="quran-info"></div>
             </div>
         </div>
 
@@ -82,8 +83,24 @@
                         <li id="prayer-Isha"><span class="name">Isha</span><span class="time">--:--</span></li>
                     </ul>
                 </div>
+
+                <div class="glass-panel widget-hijri">
+                    <div id="moon-phase">🌕</div>
+                    <div id="hijri-date" dir="rtl" class="arabic-text">Chargement...</div>
+                </div>
             </div>
         </div>
+    </div>
+
+    <!-- Absolutely positioned News Ticker -->
+    <div class="glass-panel widget-news">
+        <div class="news-logo">Al Jazeera</div>
+        <div class="ticker-wrap">
+            <div class="ticker-move" id="news-ticker" dir="rtl">
+                <div class="ticker-item">Chargement des actualités...</div>
+            </div>
+        </div>
+    </div>
     </div>
 
     <script src="js/app.js"></script>

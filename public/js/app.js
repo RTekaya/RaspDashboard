@@ -145,6 +145,13 @@ async function updateQuran() {
     if (!data || data.status !== 'OK') return;
 
     document.getElementById('quran-text').innerText = data.data.text;
+
+    const surahName = data.data.surah.name;
+    const ayahNumber = data.data.numberInSurah;
+    const infoDiv = document.getElementById('quran-info');
+    if (infoDiv) {
+        infoDiv.innerText = `${surahName} - الآية ${ayahNumber}`;
+    }
 }
 // Update every hour
 setInterval(updateQuran, 3600 * 1000);
@@ -163,14 +170,45 @@ const prayerKeyMap = {
 };
 
 let currentPrayerData = null;
+let currentHijriData = null;
 
 async function fetchPrayers() {
     const response = await fetchJson('/api/prayers');
     if (!response || response.code !== 200) return;
 
-    // Aladhan returns structure inside .data.timings
+    // Aladhan returns timings and date info inside .data
     currentPrayerData = response.data.timings;
+    currentHijriData = response.data.date.hijri;
+
     renderPrayers();
+    renderHijri();
+}
+
+function renderHijri() {
+    if (!currentHijriData) return;
+
+    // Construct Arabic string: e.g. "١٧ رمضان ١٤٤٥"
+    const day = currentHijriData.day;
+    const month = currentHijriData.month.ar;
+    const year = currentHijriData.year;
+
+    document.getElementById('hijri-date').innerText = `${day} ${month} ${year}`;
+
+    // Calculate Moon Emoji based on Hijri day (1 to ~30)
+    // 1-3: New, 4-7: Waxing Crescent, 8: First Quarter, 9-13: Waxing Gibbous
+    // 14-16: Full, 17-21: Waning Gibbous, 22-23: Last Quarter, 24-28: Waning Crescent, 29-30: New
+    const d = parseInt(day, 10);
+    let moonEmoji = '🌑'; // Default New Moon
+
+    if (d >= 2 && d <= 6) moonEmoji = '🌒';
+    else if (d >= 7 && d <= 9) moonEmoji = '🌓';
+    else if (d >= 10 && d <= 13) moonEmoji = '🌔';
+    else if (d >= 14 && d <= 16) moonEmoji = '🌕';
+    else if (d >= 17 && d <= 20) moonEmoji = '🌖';
+    else if (d >= 21 && d <= 23) moonEmoji = '🌗';
+    else if (d >= 24 && d <= 28) moonEmoji = '🌘';
+
+    document.getElementById('moon-phase').innerText = moonEmoji;
 }
 
 function renderPrayers() {
@@ -226,3 +264,27 @@ setInterval(fetchPrayers, 12 * 3600 * 1000); // fetching every 12h to be safe
 setInterval(renderPrayers, 60 * 1000);       // check every minute
 
 fetchPrayers();
+
+// ------------------------------------------------------------------
+// News Ticker
+// ------------------------------------------------------------------
+async function fetchNews() {
+    const response = await fetchJson('/api/news');
+    if (!response || !response.headlines) return;
+
+    const tickerContainer = document.getElementById('news-ticker');
+    tickerContainer.innerHTML = ''; // clear current items
+
+    // Add each headline separated by a bullet
+    const separator = '   •   ';
+    const combinedContent = response.headlines.join(separator);
+
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'ticker-item';
+    itemDiv.innerText = combinedContent;
+
+    tickerContainer.appendChild(itemDiv);
+}
+
+setInterval(fetchNews, 60 * 60 * 1000); // Every hour
+fetchNews();

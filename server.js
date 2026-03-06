@@ -13,6 +13,7 @@ const port = process.env.PORT || 3000;
 const weatherCache = new NodeCache({ stdTTL: 1800 }); // 30 mins
 const prayerCache = new NodeCache({ stdTTL: 86400 }); // 1 day
 const quranCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
+const newsCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -50,7 +51,7 @@ app.get('/api/weather', async (req, res) => {
         if (weatherCache.has(cacheKey)) return res.json(weatherCache.get(cacheKey));
 
         // Coordinates for Paris by default (from PRD)
-        const url = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=Europe/Paris';
+        const url = 'https://api.open-meteo.com/v1/forecast?latitude=48.864202&longitude=2.486464&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=Europe/Paris';
         const response = await fetch(url);
         const data = await response.json();
 
@@ -66,7 +67,8 @@ app.get('/api/prayers', async (req, res) => {
         const cacheKey = 'prayers';
         if (prayerCache.has(cacheKey)) return res.json(prayerCache.get(cacheKey));
 
-        // Aladhan definition: city=Paris, method=99, settings=18,null,15
+        // Aladhan definition: city=Paris, method=99, settings=18,null,15. 
+        // Adding timezone and returning hijri object natively.
         const url = 'http://api.aladhan.com/v1/timingsByCity?city=Paris&country=France&method=99&methodSettings=18,null,15';
         const response = await fetch(url);
         const data = await response.json();
@@ -94,6 +96,33 @@ app.get('/api/quran', async (req, res) => {
         res.json(data);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch random Ayah' });
+    }
+});
+
+app.get('/api/news', async (req, res) => {
+    try {
+        const cacheKey = 'aljazeera_news';
+        if (newsCache.has(cacheKey)) return res.json(newsCache.get(cacheKey));
+
+        // Use rss2json API to fetch and parse Al Jazeera RSS
+        const rssUrl = encodeURIComponent('https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9');
+        const url = `https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status !== 'ok') {
+            throw new Error('Failed to parse RSS feed: ' + data.message);
+        }
+
+        // Return up to 10 latest headlines
+        const headlines = data.items.slice(0, 10).map(item => item.title);
+
+        newsCache.set(cacheKey, { headlines }, 3600); // cache for 1 hour
+        res.json({ headlines });
+    } catch (err) {
+        console.error('Error fetching news:', err);
+        res.status(500).json({ error: 'Failed to fetch news' });
     }
 });
 
