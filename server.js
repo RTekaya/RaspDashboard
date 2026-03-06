@@ -2,6 +2,9 @@ const express = require('express');
 const NodeCache = require('node-cache');
 const path = require('path');
 const os = require('os');
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -94,16 +97,31 @@ app.get('/api/quran', async (req, res) => {
     }
 });
 
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', async (req, res) => {
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
     const usedMem = totalMem - freeMem;
     const ramUsagePercent = Math.round((usedMem / totalMem) * 100);
     const cpuUsagePercent = getCpuUsage();
 
+    let diskFree = 'N/A';
+    let diskPercent = 0;
+    try {
+        const { stdout } = await execAsync("df -h / | awk 'NR==2 {print $4, $5}'");
+        const parts = stdout.trim().split(/\s+/);
+        if (parts.length === 2) {
+            diskFree = parts[0];
+            diskPercent = parseInt(parts[1].replace('%', ''));
+        }
+    } catch (e) {
+        console.error("Error fetching disk space:", e);
+    }
+
     res.json({
         cpu: cpuUsagePercent,
-        ram: ramUsagePercent
+        ram: ramUsagePercent,
+        diskFree: diskFree,
+        diskPercent: diskPercent
     });
 });
 

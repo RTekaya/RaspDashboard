@@ -95,12 +95,14 @@ async function updateWeather() {
     const weatherCode = data.current_weather.weathercode;
     const maxTemp = Math.round(data.daily.temperature_2m_max[0]);
     const minTemp = Math.round(data.daily.temperature_2m_min[0]);
+    const maxTemp2 = Math.round(data.daily.temperature_2m_max[1]);
+    const minTemp2 = Math.round(data.daily.temperature_2m_min[1]);
 
     const icon = wmoCodes[weatherCode] || '🌤️';
 
     document.getElementById('current-temp').innerText = `${currentTemp}°C`;
     document.getElementById('weather-icon').innerText = icon;
-    document.getElementById('weather-forecast').innerText = `Max: ${maxTemp}° | Min: ${minTemp}°`;
+    document.getElementById('weather-forecast').innerHTML = `Auj: Max ${maxTemp}° | Min ${minTemp}°<br>Dem: Max ${maxTemp2}° | Min ${minTemp2}°`;
 }
 // Update every 30 mins
 setInterval(updateWeather, 30 * 60 * 1000);
@@ -121,6 +123,15 @@ async function updateStats() {
     document.getElementById('ram-val').innerText = `${data.ram}%`;
     document.getElementById('ram-progress').style.width = `${data.ram}%`;
     document.getElementById('ram-progress').style.backgroundColor = data.ram > 80 ? '#ef4444' : '#4ade80';
+
+    if (data.diskFree && data.diskFree !== 'N/A') {
+        const freeDisplay = data.diskFree.replace('Gi', 'G').replace('G', 'Go').replace('Mi', 'M').replace('M', 'Mo');
+        document.getElementById('disk-val').innerText = `Libre\n${freeDisplay}`;
+        document.getElementById('disk-progress').style.width = `${data.diskPercent}%`;
+        document.getElementById('disk-progress').style.backgroundColor = data.diskPercent > 80 ? '#ef4444' : '#4ade80';
+    } else {
+        document.getElementById('disk-val').innerText = `--`;
+    }
 }
 // Update every 5 seconds
 setInterval(updateStats, 5000);
