@@ -278,7 +278,7 @@ async function updateServicesStatus() {
         if (jellyfinData.active) {
             jellyfinStatusText.innerText = 'En ligne';
             jellyfinStatusText.className = 'service-status-text online';
-            jellyfinBtn.innerText = 'Arrêter';
+            jellyfinBtn.innerText = 'Désactiver';
             jellyfinBtn.classList.add('btn-active');
         } else {
             jellyfinStatusText.innerText = 'Hors ligne';
@@ -297,7 +297,7 @@ async function updateServicesStatus() {
         if (n8nData.active) {
             n8nStatusText.innerText = 'En ligne';
             n8nStatusText.className = 'service-status-text online';
-            n8nBtn.innerText = 'Arrêter';
+            n8nBtn.innerText = 'Désactiver';
             n8nBtn.classList.add('btn-active');
         } else {
             n8nStatusText.innerText = 'Hors ligne';
@@ -335,7 +335,7 @@ document.getElementById('jellyfin-btn').addEventListener('click', () => {
     const btn = document.getElementById('jellyfin-btn');
     const isOnline = btn.classList.contains('btn-active');
     const action = isOnline ? 'stop' : 'start';
-    btn.innerText = isOnline ? 'Arrêt...' : 'Démarrage...';
+    btn.innerText = isOnline ? 'Désactivation...' : 'Démarrage...';
     controlService('jellyfin', action);
 });
 
@@ -343,12 +343,12 @@ document.getElementById('n8n-btn').addEventListener('click', () => {
     const btn = document.getElementById('n8n-btn');
     const isOnline = btn.classList.contains('btn-active');
     const action = isOnline ? 'stop' : 'start';
-    btn.innerText = isOnline ? 'Arrêt...' : 'Démarrage...';
+    btn.innerText = isOnline ? 'Désactivation...' : 'Démarrage...';
     controlService('n8n', action);
 });
 
-// Update every 10 seconds
-setInterval(updateServicesStatus, 10 * 1000);
+// Update every 12 hours
+setInterval(updateServicesStatus, 12 * 3600 * 1000);
 updateServicesStatus();
 
 
