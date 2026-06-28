@@ -265,26 +265,3 @@ setInterval(renderPrayers, 60 * 1000);       // check every minute
 
 fetchPrayers();
 
-// ------------------------------------------------------------------
-// News Ticker
-// ------------------------------------------------------------------
-async function fetchNews() {
-    const response = await fetchJson('/api/news');
-    if (!response || !response.headlines) return;
-
-    const tickerContainer = document.getElementById('news-ticker');
-    tickerContainer.innerHTML = ''; // clear current items
-
-    // Add each headline separated by a bullet
-    const separator = '   •   ';
-    const combinedContent = response.headlines.join(separator);
-
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'ticker-item';
-    itemDiv.innerText = combinedContent;
-
-    tickerContainer.appendChild(itemDiv);
-}
-
-setInterval(fetchNews, 60 * 60 * 1000); // Every hour
-fetchNews();

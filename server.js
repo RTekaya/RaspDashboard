@@ -13,7 +13,8 @@ const port = process.env.PORT || 3000;
 const weatherCache = new NodeCache({ stdTTL: 1800 }); // 30 mins
 const prayerCache = new NodeCache({ stdTTL: 86400 }); // 1 day
 const quranCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
-const newsCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
+const jellyfinCache = new NodeCache({ stdTTL: 300 });
+const n8nCache = new NodeCache({ stdTTL: 300 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -99,30 +100,55 @@ app.get('/api/quran', async (req, res) => {
     }
 });
 
-app.get('/api/news', async (req, res) => {
+app.get('/api/jellyfin_status', async (req, res) => {
     try {
-        const cacheKey = 'aljazeera_news';
-        if (newsCache.has(cacheKey)) return res.json(newsCache.get(cacheKey));
-
-        // Use rss2json API to fetch and parse Al Jazeera RSS
-        const rssUrl = encodeURIComponent('https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9');
-        const url = `https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.status !== 'ok') {
-            throw new Error('Failed to parse RSS feed: ' + data.message);
-        }
-
-        // Return up to 10 latest headlines
-        const headlines = data.items.slice(0, 10).map(item => item.title);
-
-        newsCache.set(cacheKey, { headlines }, 600); // cache for 1 hour
-        res.json({ headlines });
+        const status = await execAsync('systemctl is-active jellyfin');
+        res.json({ active: status.trim() === 'active' });
     } catch (err) {
-        console.error('Error fetching news:', err);
-        res.status(500).json({ error: 'Failed to fetch news' });
+        res.status(500).json({ error: 'Failed to check Jellyfin status' });
+    }
+});
+
+app.get('/api/n8n_status', async (req, res) => {
+    try {
+        const status = await execAsync('systemctl is-active n8n');
+        res.json({ active: status.trim() === 'active' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to check n8n status' });
+    }
+});
+
+app.post('/api/jellyfin_control', async (req, res) => {
+    const { action } = req.body;
+    try {
+        if (action === 'start') {
+            await execAsync('sudo systemctl start jellyfin');
+            res.json({ success: true });
+        } else if (action === 'stop') {
+            await execAsync('sudo systemctl stop jellyfin');
+            res.json({ success: true });
+        } else {
+            res.status(400).json({ error: 'Invalid action' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to control Jellyfin' });
+    }
+});
+
+app.post('/api/n8n_control', async (req, res) => {
+    const { action } = req.body;
+    try {
+        if (action === 'start') {
+            await execAsync('sudo systemctl start n8n');
+            res.json({ success: true });
+        } else if (action === 'stop') {
+            await execAsync('sudo systemctl stop n8n');
+            res.json({ success: true });
+        } else {
+            res.status(400).json({ error: 'Invalid action' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to control n8n' });
     }
 });
 
