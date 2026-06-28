@@ -101,22 +101,29 @@ app.get('/api/quran', async (req, res) => {
     }
 });
 
-app.get('/api/jellyfin_status', async (req, res) => {
+async function isServiceActive(serviceName) {
     try {
-        const status = await execAsync('systemctl is-active jellyfin');
-        res.json({ active: status.trim() === 'active' });
+        const { stdout } = await execAsync(`systemctl is-active ${serviceName}`);
+        return stdout.trim() === 'active';
     } catch (err) {
-        res.status(500).json({ error: 'Failed to check Jellyfin status' });
+        // If systemctl exits with non-zero status (like when service is inactive),
+        // we check if stdout is still returned containing 'active' (highly unlikely)
+        // or return false safely.
+        if (err.stdout && err.stdout.trim() === 'active') {
+            return true;
+        }
+        return false;
     }
+}
+
+app.get('/api/jellyfin_status', async (req, res) => {
+    const active = await isServiceActive('jellyfin');
+    res.json({ active });
 });
 
 app.get('/api/n8n_status', async (req, res) => {
-    try {
-        const status = await execAsync('systemctl is-active n8n');
-        res.json({ active: status.trim() === 'active' });
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to check n8n status' });
-    }
+    const active = await isServiceActive('n8n');
+    res.json({ active });
 });
 
 app.post('/api/jellyfin_control', async (req, res) => {
