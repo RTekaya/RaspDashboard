@@ -16,6 +16,7 @@ const quranCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
 const jellyfinCache = new NodeCache({ stdTTL: 300 });
 const n8nCache = new NodeCache({ stdTTL: 300 });
 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Helpers CPU Calculation

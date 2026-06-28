@@ -265,3 +265,90 @@ setInterval(renderPrayers, 60 * 1000);       // check every minute
 
 fetchPrayers();
 
+// ------------------------------------------------------------------
+// Services Control (Jellyfin & n8n)
+// ------------------------------------------------------------------
+async function updateServicesStatus() {
+    // Check Jellyfin status
+    const jellyfinData = await fetchJson('/api/jellyfin_status');
+    const jellyfinStatusText = document.getElementById('jellyfin-status');
+    const jellyfinBtn = document.getElementById('jellyfin-btn');
+    
+    if (jellyfinData && jellyfinStatusText && jellyfinBtn) {
+        if (jellyfinData.active) {
+            jellyfinStatusText.innerText = 'En ligne';
+            jellyfinStatusText.className = 'service-status-text online';
+            jellyfinBtn.innerText = 'Arrêter';
+            jellyfinBtn.classList.add('btn-active');
+        } else {
+            jellyfinStatusText.innerText = 'Hors ligne';
+            jellyfinStatusText.className = 'service-status-text offline';
+            jellyfinBtn.innerText = 'Démarrer';
+            jellyfinBtn.classList.remove('btn-active');
+        }
+    }
+
+    // Check n8n status
+    const n8nData = await fetchJson('/api/n8n_status');
+    const n8nStatusText = document.getElementById('n8n-status');
+    const n8nBtn = document.getElementById('n8n-btn');
+    
+    if (n8nData && n8nStatusText && n8nBtn) {
+        if (n8nData.active) {
+            n8nStatusText.innerText = 'En ligne';
+            n8nStatusText.className = 'service-status-text online';
+            n8nBtn.innerText = 'Arrêter';
+            n8nBtn.classList.add('btn-active');
+        } else {
+            n8nStatusText.innerText = 'Hors ligne';
+            n8nStatusText.className = 'service-status-text offline';
+            n8nBtn.innerText = 'Démarrer';
+            n8nBtn.classList.remove('btn-active');
+        }
+    }
+}
+
+async function controlService(service, action) {
+    try {
+        const response = await fetch(`/api/${service}_control`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action })
+        });
+        if (response.ok) {
+            // Update status immediately after 1.5 seconds
+            setTimeout(updateServicesStatus, 1500);
+        } else {
+            console.error(`Failed to control ${service}`);
+            updateServicesStatus();
+        }
+    } catch (error) {
+        console.error(`Error controlling ${service}:`, error);
+        updateServicesStatus();
+    }
+}
+
+// Add event listeners for control buttons
+document.getElementById('jellyfin-btn').addEventListener('click', () => {
+    const btn = document.getElementById('jellyfin-btn');
+    const isOnline = btn.classList.contains('btn-active');
+    const action = isOnline ? 'stop' : 'start';
+    btn.innerText = isOnline ? 'Arrêt...' : 'Démarrage...';
+    controlService('jellyfin', action);
+});
+
+document.getElementById('n8n-btn').addEventListener('click', () => {
+    const btn = document.getElementById('n8n-btn');
+    const isOnline = btn.classList.contains('btn-active');
+    const action = isOnline ? 'stop' : 'start';
+    btn.innerText = isOnline ? 'Arrêt...' : 'Démarrage...';
+    controlService('n8n', action);
+});
+
+// Update every 10 seconds
+setInterval(updateServicesStatus, 10 * 1000);
+updateServicesStatus();
+
+
