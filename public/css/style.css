@@ -51,8 +51,8 @@ body {
     z-index: 10;
     display: flex;
     flex-direction: column;
-    padding: 15px;
-    gap: 15px;
+    padding: 10px;
+    gap: 10px;
 }
 
 .top-row {
@@ -65,7 +65,7 @@ body {
     justify-content: space-between;
     align-items: stretch;
     flex: 1;
-    gap: 15px;
+    gap: 10px;
     overflow: hidden;
 }
 
@@ -84,7 +84,7 @@ body {
 .column {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
 }
 
 .left-column {
@@ -247,8 +247,8 @@ body {
 #prayer-list li {
     display: flex;
     justify-content: space-between;
-    font-size: 1.05rem;
-    padding: 3px 8px;
+    font-size: 0.95rem;
+    padding: 2px 6px;
     border-radius: 4px;
     transition: background 0.3s;
 }
@@ -259,32 +259,40 @@ body {
     border-left: 4px solid #facc15;
 }
 
-/* Hijri & Moon */
-.widget-hijri {
+/* Combined Hijri & Services Widget */
+.widget-hijri-services {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 10px;
+}
+
+.hijri-row {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 15px;
-    padding: 8px 10px;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding-bottom: 6px;
+    margin-bottom: 2px;
 }
 
 #moon-phase {
-    font-size: 2.2rem;
+    font-size: 1.6rem;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    line-height: 1;
 }
 
 #hijri-date {
-    font-size: 1.1rem;
-    line-height: 1.3;
+    font-size: 0.95rem;
+    line-height: 1.2;
     flex: 1;
 }
 
-/* Services Widget */
-.widget-services {
+.services-row {
     display: flex;
     flex-direction: row;
-    gap: 10px;
-    padding: 8px 10px;
+    gap: 8px;
 }
 
 .service-item {
@@ -295,7 +303,7 @@ body {
     justify-content: center;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    padding: 8px 4px;
+    padding: 6px 4px;
     border: 1px solid rgba(255, 255, 255, 0.05);
     text-align: center;
 }
@@ -304,8 +312,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    margin-bottom: 4px;
+    gap: 4px;
+    margin-bottom: 2px;
 }
 
 .service-icon {
@@ -315,14 +323,14 @@ body {
 }
 
 .service-name {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 500;
 }
 
 .service-status-text {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.5);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 .service-status-text.online {
@@ -339,8 +347,8 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: #fff;
     border-radius: 4px;
-    padding: 4px 0;
-    font-size: 0.75rem;
+    padding: 2px 0;
+    font-size: 0.7rem;
     cursor: pointer;
     transition: background 0.2s, border-color 0.2s;
 }
@@ -358,5 +366,3 @@ body {
 .service-btn.btn-active:hover {
     background: rgba(239, 68, 68, 0.3);
 }
-
-
