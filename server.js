@@ -105,31 +105,29 @@ app.get('/api/quran', async (req, res) => {
     }
 });
 
+// Provide a full PATH so systemctl is always found even when
+// Node is spawned from a GUI/kiosk environment with a stripped-down PATH.
+const EXEC_ENV = {
+    ...process.env,
+    PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+};
+
 async function isServiceActive(serviceName) {
     try {
-        const { stdout } = await execAsync(`systemctl is-active ${serviceName}`);
-        return stdout.trim() === 'active';
+        const { stdout } = await execAsync(
+            `systemctl is-active ${serviceName}`,
+            { env: EXEC_ENV }
+        );
+        const result = stdout.trim();
+        console.log(`[RaspDash] systemctl is-active ${serviceName} => '${result}'`);
+        return result === 'active';
     } catch (err) {
-        console.error(`[RaspDash] Status check error for ${serviceName}:`, err.message || err);
-        
-        if (err.stdout && err.stdout.trim() === 'active') {
-            return true;
-        }
-        
-        // If command is not found (code 127), try absolute path /bin/systemctl
-        if (err.code === 127 || (err.message && err.message.includes('not found'))) {
-            try {
-                console.log(`[RaspDash] systemctl not found in PATH, trying absolute path /bin/systemctl...`);
-                const { stdout } = await execAsync(`/bin/systemctl is-active ${serviceName}`);
-                return stdout.trim() === 'active';
-            } catch (err2) {
-                console.error(`[RaspDash] Absolute path /bin/systemctl failed for ${serviceName}:`, err2.message || err2);
-                if (err2.stdout && err2.stdout.trim() === 'active') {
-                    return true;
-                }
-            }
-        }
-        return false;
+        // systemctl exits with a non-zero code when the service is inactive,
+        // but it still writes the status to stdout (e.g. 'inactive', 'failed').
+        // We need to check err.stdout before deciding the service is down.
+        const result = (err.stdout || '').trim();
+        console.error(`[RaspDash] Status check catch for ${serviceName}: code=${err.code}, stdout='${result}', msg=${err.message}`);
+        return result === 'active';
     }
 }
 
@@ -141,6 +139,27 @@ app.get('/api/jellyfin_status', async (req, res) => {
 app.get('/api/n8n_status', async (req, res) => {
     const active = await isServiceActive('n8n');
     res.json({ active });
+});
+
+// Debug endpoint: returns raw systemctl output for a service.
+// Usage: http://localhost:3000/api/debug_service?name=jellyfin
+app.get('/api/debug_service', async (req, res) => {
+    const name = req.query.name || 'jellyfin';
+    try {
+        const { stdout, stderr } = await execAsync(
+            `systemctl is-active ${name}`,
+            { env: EXEC_ENV }
+        );
+        res.json({ service: name, stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 });
+    } catch (err) {
+        res.json({
+            service: name,
+            stdout: (err.stdout || '').trim(),
+            stderr: (err.stderr || '').trim(),
+            exitCode: err.code,
+            message: err.message,
+        });
+    }
 });
 
 app.post('/api/jellyfin_control', async (req, res) => {
