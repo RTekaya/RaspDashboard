@@ -270,7 +270,7 @@ fetchPrayers();
 // ------------------------------------------------------------------
 async function updateServicesStatus() {
     // Check Jellyfin status
-    const jellyfinData = await fetchJson('/api/jellyfin_status');
+    const jellyfinData = await fetchJson(`/api/jellyfin_status?_=${Date.now()}`);
     const jellyfinStatusText = document.getElementById('jellyfin-status');
     const jellyfinBtn = document.getElementById('jellyfin-btn');
     
@@ -289,7 +289,7 @@ async function updateServicesStatus() {
     }
 
     // Check n8n status
-    const n8nData = await fetchJson('/api/n8n_status');
+    const n8nData = await fetchJson(`/api/n8n_status?_=${Date.now()}`);
     const n8nStatusText = document.getElementById('n8n-status');
     const n8nBtn = document.getElementById('n8n-btn');
     

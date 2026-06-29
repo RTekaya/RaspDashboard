@@ -17,6 +17,10 @@ const jellyfinCache = new NodeCache({ stdTTL: 300 });
 const n8nCache = new NodeCache({ stdTTL: 300 });
 
 app.use(express.json());
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Helpers CPU Calculation
@@ -106,11 +110,24 @@ async function isServiceActive(serviceName) {
         const { stdout } = await execAsync(`systemctl is-active ${serviceName}`);
         return stdout.trim() === 'active';
     } catch (err) {
-        // If systemctl exits with non-zero status (like when service is inactive),
-        // we check if stdout is still returned containing 'active' (highly unlikely)
-        // or return false safely.
+        console.error(`[RaspDash] Status check error for ${serviceName}:`, err.message || err);
+        
         if (err.stdout && err.stdout.trim() === 'active') {
             return true;
+        }
+        
+        // If command is not found (code 127), try absolute path /bin/systemctl
+        if (err.code === 127 || (err.message && err.message.includes('not found'))) {
+            try {
+                console.log(`[RaspDash] systemctl not found in PATH, trying absolute path /bin/systemctl...`);
+                const { stdout } = await execAsync(`/bin/systemctl is-active ${serviceName}`);
+                return stdout.trim() === 'active';
+            } catch (err2) {
+                console.error(`[RaspDash] Absolute path /bin/systemctl failed for ${serviceName}:`, err2.message || err2);
+                if (err2.stdout && err2.stdout.trim() === 'active') {
+                    return true;
+                }
+            }
         }
         return false;
     }
