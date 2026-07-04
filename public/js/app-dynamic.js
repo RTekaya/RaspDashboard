@@ -14,6 +14,12 @@ async function fetchJson(url) {
     }
 }
 
+function elFromHTML(html) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html.trim();
+    return wrapper.firstElementChild;
+}
+
 // ------------------------------------------------------------------
 // Background logic (always on, not gated by Firestore)
 // ------------------------------------------------------------------
@@ -42,6 +48,26 @@ updateBackground();
 // ------------------------------------------------------------------
 // Clock and Date
 // ------------------------------------------------------------------
+function renderClockTemplate() {
+    const el = elFromHTML(`
+        <div class="glass-panel widget-clock">
+            <div id="time">--:--</div>
+            <div id="date">Chargement...</div>
+        </div>
+    `);
+    el.addEventListener('click', async () => {
+        if (confirm("Voulez-vous quitter le Dashboard et retourner au bureau ?")) {
+            try {
+                await fetch('/api/quit', { method: 'POST' });
+                window.close();
+            } catch (err) {
+                console.error('Erreur lors de la fermeture:', err);
+            }
+        }
+    });
+    return el;
+}
+
 function updateClock() {
     const now = new Date();
 
@@ -55,21 +81,10 @@ function updateClock() {
     document.getElementById('date').innerText = dateString;
 }
 
-function startClock() {
+function startClockInto(ctx) {
     updateClock();
-    setInterval(updateClock, 1000);
+    ctx.intervals.push(setInterval(updateClock, 1000));
 }
-
-document.querySelector('.widget-clock').addEventListener('click', async () => {
-    if (confirm("Voulez-vous quitter le Dashboard et retourner au bureau ?")) {
-        try {
-            await fetch('/api/quit', { method: 'POST' });
-            window.close();
-        } catch (err) {
-            console.error('Erreur lors de la fermeture:', err);
-        }
-    }
-});
 
 // ------------------------------------------------------------------
 // Weather
@@ -82,6 +97,18 @@ const wmoCodes = {
     71: '🌨️', 73: '🌨️', 75: '❄️',
     95: '⛈️', 96: '⛈️', 99: '⛈️'
 };
+
+function renderWeatherTemplate() {
+    return elFromHTML(`
+        <div class="glass-panel widget-weather">
+            <div class="weather-current">
+                <span id="weather-icon">--</span>
+                <span id="current-temp">--°</span>
+            </div>
+            <div id="weather-forecast">Max: --° | Min: --°</div>
+        </div>
+    `);
+}
 
 async function updateWeather() {
     const data = await fetchJson('/api/weather');
@@ -101,14 +128,42 @@ async function updateWeather() {
     document.getElementById('weather-forecast').innerHTML = `Auj: Max ${maxTemp}° | Min ${minTemp}°<br>Dem: Max ${maxTemp2}° | Min ${minTemp2}°`;
 }
 
-function startWeather() {
+function startWeatherInto(ctx) {
     updateWeather();
-    setInterval(updateWeather, 30 * 60 * 1000);
+    ctx.intervals.push(setInterval(updateWeather, 30 * 60 * 1000));
 }
 
 // ------------------------------------------------------------------
 // Stats CPU & RAM
 // ------------------------------------------------------------------
+function renderStatsTemplate() {
+    return elFromHTML(`
+        <div class="glass-panel widget-stats">
+            <div class="stat-item">
+                <span>CPU</span>
+                <div class="progress-bar">
+                    <div class="progress" id="cpu-progress"></div>
+                </div>
+                <span id="cpu-val" class="stat-val">--%</span>
+            </div>
+            <div class="stat-item">
+                <span>RAM</span>
+                <div class="progress-bar">
+                    <div class="progress" id="ram-progress"></div>
+                </div>
+                <span id="ram-val" class="stat-val">--%</span>
+            </div>
+            <div class="stat-item">
+                <span>DISK</span>
+                <div class="progress-bar">
+                    <div class="progress" id="disk-progress"></div>
+                </div>
+                <span id="disk-val" class="stat-val">--</span>
+            </div>
+        </div>
+    `);
+}
+
 async function updateStats() {
     const data = await fetchJson('/api/stats');
     if (!data) return;
@@ -131,14 +186,23 @@ async function updateStats() {
     }
 }
 
-function startStats() {
+function startStatsInto(ctx) {
     updateStats();
-    setInterval(updateStats, 5000);
+    ctx.intervals.push(setInterval(updateStats, 5000));
 }
 
 // ------------------------------------------------------------------
 // Random Quran Ayah
 // ------------------------------------------------------------------
+function renderQuranTemplate() {
+    return elFromHTML(`
+        <div class="glass-panel widget-quran">
+            <div id="quran-text" dir="rtl" class="arabic-text">Chargement du verset...</div>
+            <div id="quran-info" dir="rtl" class="quran-info"></div>
+        </div>
+    `);
+}
+
 async function updateQuran() {
     const data = await fetchJson('/api/quran');
     if (!data || data.status !== 'OK') return;
@@ -153,14 +217,30 @@ async function updateQuran() {
     }
 }
 
-function startQuran() {
+function startQuranInto(ctx) {
     updateQuran();
-    setInterval(updateQuran, 3600 * 1000);
+    ctx.intervals.push(setInterval(updateQuran, 3600 * 1000));
 }
 
 // ------------------------------------------------------------------
 // Prayer Times
 // ------------------------------------------------------------------
+function renderPrayersTemplate() {
+    return elFromHTML(`
+        <div class="glass-panel widget-prayers">
+            <h2 class="prayers-title">Heures de Prière</h2>
+            <ul id="prayer-list">
+                <li id="prayer-Fajr"><span class="name">Fajr</span><span class="time">--:--</span></li>
+                <li id="prayer-Sunrise"><span class="name">Chourouq</span><span class="time">--:--</span></li>
+                <li id="prayer-Dhuhr"><span class="name">Dhuhr</span><span class="time">--:--</span></li>
+                <li id="prayer-Asr"><span class="name">Asr</span><span class="time">--:--</span></li>
+                <li id="prayer-Maghrib"><span class="name">Maghrib</span><span class="time">--:--</span></li>
+                <li id="prayer-Isha"><span class="name">Isha</span><span class="time">--:--</span></li>
+            </ul>
+        </div>
+    `);
+}
+
 let currentPrayerData = null;
 let currentHijriData = null;
 
@@ -177,12 +257,14 @@ async function fetchPrayers() {
 
 function renderHijri() {
     if (!currentHijriData) return;
+    const hijriEl = document.getElementById('hijri-date');
+    if (!hijriEl) return;
 
     const day = currentHijriData.day;
     const month = currentHijriData.month.ar;
     const year = currentHijriData.year;
 
-    document.getElementById('hijri-date').innerText = `${day} ${month} ${year}`;
+    hijriEl.innerText = `${day} ${month} ${year}`;
 
     const d = parseInt(day, 10);
     let moonEmoji = '🌑';
@@ -200,6 +282,7 @@ function renderHijri() {
 
 function renderPrayers() {
     if (!currentPrayerData) return;
+    if (!document.getElementById('prayer-list')) return;
 
     const now = new Date();
     const currentTimeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
@@ -236,15 +319,67 @@ function renderPrayers() {
     }
 }
 
-function startPrayers() {
+function startPrayersInto(ctx) {
     fetchPrayers();
-    setInterval(fetchPrayers, 12 * 3600 * 1000);
-    setInterval(renderPrayers, 60 * 1000);
+    ctx.intervals.push(setInterval(fetchPrayers, 12 * 3600 * 1000));
+    ctx.intervals.push(setInterval(renderPrayers, 60 * 1000));
 }
 
 // ------------------------------------------------------------------
-// Services Control (Jellyfin & n8n) — combined with Hijri panel
+// Hijri date + Services Control (Jellyfin & n8n) — combined panel
 // ------------------------------------------------------------------
+function renderHijriServicesTemplate() {
+    const el = elFromHTML(`
+        <div class="glass-panel widget-hijri-services">
+            <div class="hijri-row">
+                <div id="moon-phase">🌕</div>
+                <div id="hijri-date" dir="rtl" class="arabic-text">Chargement...</div>
+            </div>
+            <div class="services-row">
+                <div class="service-item" id="service-jellyfin">
+                    <div class="service-header">
+                        <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                        </svg>
+                        <span class="service-name">Jellyfin</span>
+                    </div>
+                    <span class="service-status-text" id="jellyfin-status">...</span>
+                    <button class="service-btn" id="jellyfin-btn" data-service="jellyfin">Démarrer</button>
+                </div>
+                <div class="service-item" id="service-n8n">
+                    <div class="service-header">
+                        <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                        <span class="service-name">n8n</span>
+                    </div>
+                    <span class="service-status-text" id="n8n-status">...</span>
+                    <button class="service-btn" id="n8n-btn" data-service="n8n">Démarrer</button>
+                </div>
+            </div>
+        </div>
+    `);
+
+    el.querySelector('#jellyfin-btn').addEventListener('click', () => {
+        const btn = el.querySelector('#jellyfin-btn');
+        const isOnline = btn.classList.contains('btn-active');
+        const action = isOnline ? 'stop' : 'start';
+        btn.innerText = isOnline ? 'Désactivation...' : 'Démarrage...';
+        controlService('jellyfin', action);
+    });
+
+    el.querySelector('#n8n-btn').addEventListener('click', () => {
+        const btn = el.querySelector('#n8n-btn');
+        const isOnline = btn.classList.contains('btn-active');
+        const action = isOnline ? 'stop' : 'start';
+        btn.innerText = isOnline ? 'Désactivation...' : 'Démarrage...';
+        controlService('n8n', action);
+    });
+
+    return el;
+}
+
 async function updateServicesStatus() {
     const jellyfinData = await fetchJson(`/api/jellyfin_status?_=${Date.now()}`);
     const jellyfinStatusText = document.getElementById('jellyfin-status');
@@ -304,50 +439,72 @@ async function controlService(service, action) {
     }
 }
 
-document.getElementById('jellyfin-btn').addEventListener('click', () => {
-    const btn = document.getElementById('jellyfin-btn');
-    const isOnline = btn.classList.contains('btn-active');
-    const action = isOnline ? 'stop' : 'start';
-    btn.innerText = isOnline ? 'Désactivation...' : 'Démarrage...';
-    controlService('jellyfin', action);
-});
-
-document.getElementById('n8n-btn').addEventListener('click', () => {
-    const btn = document.getElementById('n8n-btn');
-    const isOnline = btn.classList.contains('btn-active');
-    const action = isOnline ? 'stop' : 'start';
-    btn.innerText = isOnline ? 'Désactivation...' : 'Démarrage...';
-    controlService('n8n', action);
-});
-
-function startHijriServices() {
+function startHijriServicesInto(ctx) {
     updateServicesStatus();
-    setInterval(updateServicesStatus, 12 * 3600 * 1000);
+    ctx.intervals.push(setInterval(updateServicesStatus, 12 * 3600 * 1000));
 }
 
 // ------------------------------------------------------------------
-// Firebase real-time component toggling
+// Generic component engine
 // ------------------------------------------------------------------
-const componentState = {
-    clock: { el: '.widget-clock', intervalStarted: false, start: startClock },
-    weather: { el: '.widget-weather', intervalStarted: false, start: startWeather },
-    stats: { el: '.widget-stats', intervalStarted: false, start: startStats },
-    quran: { el: '.widget-quran', intervalStarted: false, start: startQuran },
-    prayers: { el: '.widget-prayers', intervalStarted: false, start: startPrayers },
-    hijri_services: { el: '.widget-hijri-services', intervalStarted: false, start: startHijriServices },
+const componentRegistry = {
+    clock: { render: renderClockTemplate, start: startClockInto },
+    weather: { render: renderWeatherTemplate, start: startWeatherInto },
+    stats: { render: renderStatsTemplate, start: startStatsInto },
+    quran: { render: renderQuranTemplate, start: startQuranInto },
+    prayers: { render: renderPrayersTemplate, start: startPrayersInto },
+    hijri_services: { render: renderHijriServicesTemplate, start: startHijriServicesInto },
 };
 
-function applyComponentVisibility(id, enabled) {
-    const c = componentState[id];
-    if (!c) return;
+const zoneContainers = {
+    top: document.getElementById('zone-top'),
+    left: document.getElementById('zone-left'),
+    right: document.getElementById('zone-right'),
+};
 
-    const panel = document.querySelector(c.el);
-    if (panel) panel.style.display = enabled ? '' : 'none';
+const mountedInstances = new Map(); // id -> { type, zone, order, el, intervals }
 
-    if (enabled && !c.intervalStarted) {
-        c.start();
-        c.intervalStarted = true;
-    }
+function insertInOrder(el, zone, order) {
+    el.dataset.order = order;
+    const container = zoneContainers[zone];
+    if (!container) return;
+    const siblings = Array.from(container.children);
+    const next = siblings.find((sib) => Number(sib.dataset.order) > order);
+    container.insertBefore(el, next || null);
+}
+
+function mount(id, data) {
+    const entry = componentRegistry[data.type];
+    if (!entry) return; // unknown type: not yet implemented, skip silently
+
+    const el = entry.render();
+    el.dataset.instanceId = id;
+
+    // Attach to the document before starting the update loop: synchronous
+    // renderers (e.g. clock) touch the DOM immediately and would otherwise
+    // hit a detached node.
+    insertInOrder(el, data.zone, data.order);
+
+    const ctx = { intervals: [] };
+    entry.start(ctx);
+
+    mountedInstances.set(id, { type: data.type, zone: data.zone, order: data.order, el, intervals: ctx.intervals });
+}
+
+function unmount(id) {
+    const inst = mountedInstances.get(id);
+    if (!inst) return;
+    inst.intervals.forEach(clearInterval);
+    inst.el.remove();
+    mountedInstances.delete(id);
+}
+
+function reposition(id, zone, order) {
+    const inst = mountedInstances.get(id);
+    if (!inst) return;
+    inst.zone = zone;
+    inst.order = order;
+    insertInOrder(inst.el, zone, order);
 }
 
 const app = initializeApp(firebaseConfig);
@@ -356,8 +513,35 @@ const db = getFirestore(app);
 onSnapshot(collection(db, 'components'), (snapshot) => {
     snapshot.docChanges().forEach((change) => {
         const id = change.doc.id;
-        const enabled = change.doc.data().enabled;
-        applyComponentVisibility(id, enabled);
+        try {
+            if (change.type === 'removed') {
+                unmount(id);
+                return;
+            }
+
+            const data = change.doc.data();
+            const wasMounted = mountedInstances.has(id);
+            const shouldMount = !!data.enabled && !!componentRegistry[data.type];
+
+            if (wasMounted && !shouldMount) {
+                unmount(id);
+            } else if (!wasMounted && shouldMount) {
+                mount(id, data);
+            } else if (wasMounted && shouldMount) {
+                const inst = mountedInstances.get(id);
+                if (inst.type !== data.type) {
+                    unmount(id);
+                    mount(id, data);
+                } else if (inst.zone !== data.zone || inst.order !== data.order) {
+                    reposition(id, data.zone, data.order);
+                }
+                // otherwise nothing relevant changed — leave the instance's intervals running
+            }
+        } catch (err) {
+            // A broken instance/type must not prevent the rest of the
+            // collection from mounting.
+            console.error(`Component engine error for '${id}':`, err);
+        }
     });
 }, (error) => {
     console.error('Firestore listener error:', error);
