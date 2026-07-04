@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RaspDash Smart Dashboard (Dynamic)</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Amiri:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Background layer -->
+    <div id="background-container">
+        <img id="bg1" class="bg-image active" alt="background 1">
+        <img id="bg2" class="bg-image" alt="background 2">
+    </div>
+
+    <!-- Widgets layer -->
+    <div id="dashboard">
+        <!-- Top Row: Quran -->
+        <div class="top-row">
+            <div class="glass-panel widget-quran">
+                <div id="quran-text" dir="rtl" class="arabic-text">Chargement du verset...</div>
+                <div id="quran-info" dir="rtl" class="quran-info"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Row: Left and Right -->
+        <div class="bottom-row">
+            <!-- Left Side: Clock, Weather, Stats -->
+            <div class="column left-column">
+                <div class="glass-panel widget-clock">
+                    <div id="time">--:--</div>
+                    <div id="date">Chargement...</div>
+                </div>
+
+                <div class="glass-panel widget-weather">
+                    <div class="weather-current">
+                        <span id="weather-icon">--</span>
+                        <span id="current-temp">--°</span>
+                    </div>
+                    <div id="weather-forecast">Max: --° | Min: --°</div>
+                </div>
+
+                <div class="glass-panel widget-stats">
+                    <div class="stat-item">
+                        <span>CPU</span>
+                        <div class="progress-bar">
+                            <div class="progress" id="cpu-progress"></div>
+                        </div>
+                        <span id="cpu-val" class="stat-val">--%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>RAM</span>
+                        <div class="progress-bar">
+                            <div class="progress" id="ram-progress"></div>
+                        </div>
+                        <span id="ram-val" class="stat-val">--%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>DISK</span>
+                        <div class="progress-bar">
+                            <div class="progress" id="disk-progress"></div>
+                        </div>
+                        <span id="disk-val" class="stat-val">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Prayers -->
+            <div class="column right-column">
+                <div class="glass-panel widget-prayers">
+                    <h2 class="prayers-title">Heures de Prière</h2>
+                    <ul id="prayer-list">
+                        <li id="prayer-Fajr"><span class="name">Fajr</span><span class="time">--:--</span></li>
+                        <li id="prayer-Sunrise"><span class="name">Chourouq</span><span class="time">--:--</span></li>
+                        <li id="prayer-Dhuhr"><span class="name">Dhuhr</span><span class="time">--:--</span></li>
+                        <li id="prayer-Asr"><span class="name">Asr</span><span class="time">--:--</span></li>
+                        <li id="prayer-Maghrib"><span class="name">Maghrib</span><span class="time">--:--</span></li>
+                        <li id="prayer-Isha"><span class="name">Isha</span><span class="time">--:--</span></li>
+                    </ul>
+                </div>
+
+                <div class="glass-panel widget-hijri-services">
+                    <div class="hijri-row">
+                        <div id="moon-phase">🌕</div>
+                        <div id="hijri-date" dir="rtl" class="arabic-text">Chargement...</div>
+                    </div>
+                    <div class="services-row">
+                        <div class="service-item" id="service-jellyfin">
+                            <div class="service-header">
+                                <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                </svg>
+                                <span class="service-name">Jellyfin</span>
+                            </div>
+                            <span class="service-status-text" id="jellyfin-status">...</span>
+                            <button class="service-btn" id="jellyfin-btn" data-service="jellyfin">Démarrer</button>
+                        </div>
+                        <div class="service-item" id="service-n8n">
+                            <div class="service-header">
+                                <svg class="service-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                </svg>
+                                <span class="service-name">n8n</span>
+                            </div>
+                            <span class="service-status-text" id="n8n-status">...</span>
+                            <button class="service-btn" id="n8n-btn" data-service="n8n">Démarrer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module" src="js/app-dynamic.js"></script>
+</body>
+
+</html>

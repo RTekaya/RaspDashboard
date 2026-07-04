@@ -166,15 +166,16 @@ app.post('/api/jellyfin_control', async (req, res) => {
     const { action } = req.body;
     try {
         if (action === 'start') {
-            await execAsync('sudo systemctl start jellyfin');
+            await execAsync('sudo systemctl start jellyfin', { env: EXEC_ENV });
             res.json({ success: true });
         } else if (action === 'stop') {
-            await execAsync('sudo systemctl stop jellyfin');
+            await execAsync('sudo systemctl stop jellyfin', { env: EXEC_ENV });
             res.json({ success: true });
         } else {
             res.status(400).json({ error: 'Invalid action' });
         }
     } catch (err) {
+        console.error(`[RaspDash] jellyfin_control '${action}' failed: code=${err.code}, stdout='${(err.stdout || '').trim()}', stderr='${(err.stderr || '').trim()}', msg=${err.message}`);
         res.status(500).json({ error: 'Failed to control Jellyfin' });
     }
 });
@@ -183,15 +184,16 @@ app.post('/api/n8n_control', async (req, res) => {
     const { action } = req.body;
     try {
         if (action === 'start') {
-            await execAsync('sudo systemctl start n8n');
+            await execAsync('sudo systemctl start n8n', { env: EXEC_ENV });
             res.json({ success: true });
         } else if (action === 'stop') {
-            await execAsync('sudo systemctl stop n8n');
+            await execAsync('sudo systemctl stop n8n', { env: EXEC_ENV });
             res.json({ success: true });
         } else {
             res.status(400).json({ error: 'Invalid action' });
         }
     } catch (err) {
+        console.error(`[RaspDash] n8n_control '${action}' failed: code=${err.code}, stdout='${(err.stdout || '').trim()}', stderr='${(err.stderr || '').trim()}', msg=${err.message}`);
         res.status(500).json({ error: 'Failed to control n8n' });
     }
 });
