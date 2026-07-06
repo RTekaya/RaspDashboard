@@ -91,6 +91,8 @@ HTML utilisent des ids globaux).
 « ＋ Nouveau composant » → **Composant custom**. L'éditeur s'ouvre avec un exemple
 minimal qui marche. Le menu **« Exemples… »** propose des modèles complets
 (prix du Bitcoin, CPU du Pi, compte à rebours) — le plus simple est de partir de l'un d'eux.
+Un catalogue d'idées adaptées au Raspberry, avec des recettes prêtes à coller,
+est disponible dans [IDEES_COMPOSANTS.md](IDEES_COMPOSANTS.md).
 
 ### 4.1 Anatomie d'un composant custom
 
