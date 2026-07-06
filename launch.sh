@@ -7,4 +7,4 @@ sleep 1
 
 npm start &
 sleep 3
-chromium --kiosk http://localhost:3000
+chromium --kiosk http://localhost:3000/dynamic.html

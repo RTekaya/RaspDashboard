@@ -2,8 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /components/{docId} {
+      // Le dashboard du Raspberry lit sans authentification.
       allow read: if true;
-      allow write: if false;
+      // Seul l'admin (console d'administration) peut écrire.
+      // NB : les composants custom contiennent du JS exécuté par le dashboard,
+      // l'écriture doit donc rester strictement réservée à cet email.
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'tekaya.rami@gmail.com';
     }
   }
 }

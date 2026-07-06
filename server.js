@@ -19,9 +19,15 @@ const n8nCache = new NodeCache({ stdTTL: 300 });
 app.use(express.json());
 app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    // L'aperçu de la console d'admin (iframe sandbox) appelle ces API
+    // depuis une origine opaque : il faut autoriser CORS.
+    res.set('Access-Control-Allow-Origin', '*');
     next();
 });
 app.use(express.static(path.join(__dirname, 'public')));
+// Console d'administration des composants, aussi accessible sur le LAN :
+// http://<ip-du-raspberry>:3000/admin
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
 // Helpers CPU Calculation
 let previousCpuTime = { idle: 0, total: 0 };

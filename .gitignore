@@ -3,3 +3,4 @@ firebase-debug.log
 server.log
 .claude/
 .DS_Store
+.firebase/

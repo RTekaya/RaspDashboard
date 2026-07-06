@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RaspDash — Console d'administration</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body>
+    <!-- ============================ LOGIN ============================ -->
+    <div id="login-view" class="hidden">
+        <div class="login-card glass">
+            <h1>RaspDash</h1>
+            <p class="login-subtitle">Console d'administration des composants</p>
+            <form id="login-form">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" autocomplete="username" required>
+                <label for="login-password">Mot de passe</label>
+                <input type="password" id="login-password" autocomplete="current-password" required>
+                <div id="login-error" class="login-error hidden"></div>
+                <button type="submit" id="login-btn" class="btn btn-primary btn-block">Se connecter</button>
+            </form>
+            <button id="reset-password-btn" class="btn-link">Mot de passe oublié ?</button>
+        </div>
+    </div>
+
+    <!-- ============================ APP ============================ -->
+    <div id="app-view" class="hidden">
+        <header class="topbar glass">
+            <div class="topbar-title">
+                <h1>RaspDash</h1>
+                <span class="topbar-subtitle">Console d'administration</span>
+            </div>
+            <div class="topbar-actions">
+                <span id="user-email" class="user-email"></span>
+                <button id="logout-btn" class="btn btn-ghost">Déconnexion</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="toolbar">
+                <div id="sync-status" class="sync-status">Connexion à Firestore…</div>
+                <button id="new-component-btn" class="btn btn-primary">＋ Nouveau composant</button>
+            </div>
+
+            <div class="zones">
+                <section class="zone glass" data-zone="top">
+                    <h2>Zone haut <span class="zone-hint">(bandeau supérieur)</span></h2>
+                    <div class="zone-list" id="zone-list-top"></div>
+                </section>
+                <section class="zone glass" data-zone="left">
+                    <h2>Colonne gauche</h2>
+                    <div class="zone-list" id="zone-list-left"></div>
+                </section>
+                <section class="zone glass" data-zone="right">
+                    <h2>Colonne droite</h2>
+                    <div class="zone-list" id="zone-list-right"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== MODAL : NOUVEAU COMPOSANT ==================== -->
+    <div id="picker-modal" class="modal-backdrop hidden">
+        <div class="modal glass">
+            <div class="modal-header">
+                <h2>Nouveau composant</h2>
+                <button class="btn-close" data-close="picker-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <h3>Créer from scratch</h3>
+                <div class="type-grid" id="picker-custom"></div>
+                <h3>Ou ajouter un type intégré</h3>
+                <div class="type-grid" id="picker-builtins"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL : ÉDITEUR ==================== -->
+    <div id="editor-modal" class="modal-backdrop hidden">
+        <div class="modal modal-wide glass">
+            <div class="modal-header">
+                <h2 id="editor-title">Composant</h2>
+                <button class="btn-close" data-close="editor-modal">✕</button>
+            </div>
+            <div class="modal-body editor-layout">
+                <div class="editor-form">
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="f-name">Nom</label>
+                            <input type="text" id="f-name" placeholder="Mon composant">
+                        </div>
+                        <div class="field field-small">
+                            <label for="f-zone">Zone</label>
+                            <select id="f-zone">
+                                <option value="top">Haut</option>
+                                <option value="left">Gauche</option>
+                                <option value="right">Droite</option>
+                            </select>
+                        </div>
+                        <div class="field field-small">
+                            <label for="f-order">Ordre</label>
+                            <input type="number" id="f-order" value="1">
+                        </div>
+                        <div class="field field-small field-checkbox">
+                            <label for="f-enabled">Activé</label>
+                            <label class="switch">
+                                <input type="checkbox" id="f-enabled" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="code-editors">
+                        <div class="editor-tabs" id="editor-tabs">
+                            <button class="tab active" data-tab="html">HTML</button>
+                            <button class="tab" data-tab="css">CSS</button>
+                            <button class="tab" data-tab="js">JS</button>
+                            <button class="tab" data-tab="config">Config (JSON)</button>
+                            <span class="tabs-spacer"></span>
+                            <select id="snippet-select" title="Insérer un exemple">
+                                <option value="">Exemples…</option>
+                            </select>
+                        </div>
+                        <textarea id="f-html" class="code-area" data-pane="html" spellcheck="false"
+                            placeholder="<div class=&quot;hello&quot;>Bonjour</div>"></textarea>
+                        <textarea id="f-css" class="code-area hidden" data-pane="css" spellcheck="false"
+                            placeholder=".hello { font-size: 1.2rem; }"></textarea>
+                        <textarea id="f-js" class="code-area hidden" data-pane="js" spellcheck="false"
+                            placeholder="// ctx.root, ctx.config, ctx.fetchJson, ctx.every(ms, fn), ctx.onCleanup(fn)"></textarea>
+                        <textarea id="f-config" class="code-area hidden" data-pane="config" spellcheck="false"
+                            placeholder="{ }"></textarea>
+                    </div>
+
+                    <div id="editor-error" class="editor-error hidden"></div>
+
+                    <div class="editor-actions">
+                        <button id="preview-btn" class="btn btn-ghost">▶ Aperçu</button>
+                        <span class="tabs-spacer"></span>
+                        <button id="delete-btn" class="btn btn-danger hidden">Supprimer</button>
+                        <button id="save-btn" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </div>
+
+                <div class="editor-preview" id="preview-panel">
+                    <div class="preview-header">
+                        <span>Aperçu</span>
+                        <input type="text" id="preview-api-base" title="Base des URL /api/* pour l'aperçu"
+                            placeholder="http://raspberrypi.local:3000">
+                    </div>
+                    <div id="preview-frame-holder"></div>
+                    <pre id="preview-console" class="preview-console"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/admin.js"></script>
+</body>
+
+</html>

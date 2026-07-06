@@ -445,6 +445,48 @@ function startHijriServicesInto(ctx) {
 }
 
 // ------------------------------------------------------------------
+// Custom components (defined entirely in Firestore: html + css + js)
+// ------------------------------------------------------------------
+// The markup and styles live in a Shadow DOM so a custom component can
+// never break the dashboard's own CSS (and two instances can't collide).
+function renderCustomTemplate(data) {
+    const el = document.createElement('div');
+    el.className = 'glass-panel widget-custom';
+    const shadow = el.attachShadow({ mode: 'open' });
+    shadow.innerHTML = `<style>:host { display: block; }\n${data.css || ''}</style>${data.html || ''}`;
+    return { el, root: shadow };
+}
+
+function startCustomInto(ctx, data) {
+    const code = (data.js || '').trim();
+    if (!code) return;
+
+    const api = {
+        root: ctx.root,
+        config: ctx.config,
+        id: ctx.id,
+        fetchJson,
+        every(ms, fn) {
+            const safeCall = async () => {
+                try { await fn(); } catch (err) { console.error(`Custom component '${ctx.id}' tick error:`, err); }
+            };
+            safeCall();
+            ctx.intervals.push(setInterval(safeCall, ms));
+        },
+        onCleanup(fn) {
+            ctx.cleanups.push(fn);
+        },
+    };
+
+    const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+    const fn = new AsyncFunction('ctx', `"use strict";\n${code}`);
+    // Async errors must not take down the engine — log and keep going.
+    Promise.resolve(fn(api)).catch((err) => {
+        console.error(`Custom component '${ctx.id}' error:`, err);
+    });
+}
+
+// ------------------------------------------------------------------
 // Generic component engine
 // ------------------------------------------------------------------
 const componentRegistry = {
@@ -454,6 +496,7 @@ const componentRegistry = {
     quran: { render: renderQuranTemplate, start: startQuranInto },
     prayers: { render: renderPrayersTemplate, start: startPrayersInto },
     hijri_services: { render: renderHijriServicesTemplate, start: startHijriServicesInto },
+    custom: { render: renderCustomTemplate, start: startCustomInto },
 };
 
 const zoneContainers = {
@@ -462,7 +505,19 @@ const zoneContainers = {
     right: document.getElementById('zone-right'),
 };
 
-const mountedInstances = new Map(); // id -> { type, zone, order, el, intervals }
+const mountedInstances = new Map(); // id -> { type, zone, order, sig, el, intervals, cleanups }
+
+// Everything that requires a re-render when it changes (as opposed to
+// zone/order, which only require moving the existing element).
+function contentSignature(data) {
+    return JSON.stringify([
+        data.type,
+        data.html || '',
+        data.css || '',
+        data.js || '',
+        data.config || {},
+    ]);
+}
 
 function insertInOrder(el, zone, order) {
     el.dataset.order = order;
@@ -477,7 +532,9 @@ function mount(id, data) {
     const entry = componentRegistry[data.type];
     if (!entry) return; // unknown type: not yet implemented, skip silently
 
-    const el = entry.render();
+    const rendered = entry.render(data);
+    const el = rendered.el || rendered;
+    const root = rendered.root || el; // custom components expose their shadow root
     el.dataset.instanceId = id;
 
     // Attach to the document before starting the update loop: synchronous
@@ -485,16 +542,27 @@ function mount(id, data) {
     // hit a detached node.
     insertInOrder(el, data.zone, data.order);
 
-    const ctx = { intervals: [] };
-    entry.start(ctx);
+    const ctx = { id, root, config: data.config || {}, intervals: [], cleanups: [] };
+    entry.start(ctx, data);
 
-    mountedInstances.set(id, { type: data.type, zone: data.zone, order: data.order, el, intervals: ctx.intervals });
+    mountedInstances.set(id, {
+        type: data.type,
+        zone: data.zone,
+        order: data.order,
+        sig: contentSignature(data),
+        el,
+        intervals: ctx.intervals,
+        cleanups: ctx.cleanups,
+    });
 }
 
 function unmount(id) {
     const inst = mountedInstances.get(id);
     if (!inst) return;
     inst.intervals.forEach(clearInterval);
+    inst.cleanups.forEach((fn) => {
+        try { fn(); } catch (err) { console.error(`Cleanup error for '${id}':`, err); }
+    });
     inst.el.remove();
     mountedInstances.delete(id);
 }
@@ -529,7 +597,9 @@ onSnapshot(collection(db, 'components'), (snapshot) => {
                 mount(id, data);
             } else if (wasMounted && shouldMount) {
                 const inst = mountedInstances.get(id);
-                if (inst.type !== data.type) {
+                if (inst.sig !== contentSignature(data)) {
+                    // type, html, css, js or config changed: full re-render, so a
+                    // custom component edited from the admin updates live.
                     unmount(id);
                     mount(id, data);
                 } else if (inst.zone !== data.zone || inst.order !== data.order) {
