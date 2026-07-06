@@ -9,7 +9,9 @@
  * Ensuite ce script :
  *   1. active le provider Email/Mot de passe ;
  *   2. crée l'utilisateur admin ;
- *   3. désactive l'auto-inscription publique (personne d'autre ne peut créer de compte).
+ *   3. désactive l'auto-inscription publique (personne d'autre ne peut créer de compte) ;
+ *   4. vérifie que la clé API web autorise Identity Toolkit (les clés créées
+ *      avant l'activation d'Auth le bloquent, d'où des connexions refusées).
  *
  * Usage : node scripts/setup-auth.js <email> <mot-de-passe>
  * (utilise la session `firebase login` du CLI Firebase)
@@ -63,6 +65,55 @@ async function api(token, method, url, body) {
     return { status: res.status, json };
 }
 
+// La clé API web (admin/js/firebase-config.js) doit autoriser le service
+// identitytoolkit.googleapis.com, sinon Google renvoie API_KEY_SERVICE_BLOCKED
+// au moment de la connexion. Corrige la clé si besoin ; en cas d'échec, avertit
+// sans faire échouer le reste de la configuration.
+async function ensureApiKeyAllowsAuth(token) {
+    const cfgSrc = fs.readFileSync(path.join(__dirname, '..', 'admin', 'js', 'firebase-config.js'), 'utf8');
+    const apiKey = (cfgSrc.match(/apiKey:\s*"([^"]+)"/) || [])[1];
+    const projectNumber = (cfgSrc.match(/messagingSenderId:\s*"(\d+)"/) || [])[1];
+    if (!apiKey || !projectNumber) {
+        console.warn('⚠ Clé API introuvable dans admin/js/firebase-config.js — vérification ignorée');
+        return;
+    }
+
+    await api(token, 'POST',
+        `https://serviceusage.googleapis.com/v1/projects/${projectNumber}/services/apikeys.googleapis.com:enable`, {});
+
+    const list = await api(token, 'GET',
+        `https://apikeys.googleapis.com/v2/projects/${projectNumber}/locations/global/keys`);
+    if (list.status !== 200) {
+        console.warn('⚠ Impossible de lister les clés API : ' + JSON.stringify(list.json));
+        return;
+    }
+
+    for (const key of list.json.keys || []) {
+        const ks = await api(token, 'GET', `https://apikeys.googleapis.com/v2/${key.name}/keyString`);
+        if (ks.json.keyString !== apiKey) continue;
+
+        const restrictions = key.restrictions || {};
+        const targets = restrictions.apiTargets || [];
+        // Sans restriction d'API, tout est déjà autorisé.
+        if (!targets.length || targets.some((t) => t.service === 'identitytoolkit.googleapis.com')) {
+            console.log('✓ La clé API web autorise Identity Toolkit');
+            return;
+        }
+        targets.push({ service: 'identitytoolkit.googleapis.com' });
+        const patch = await api(token, 'PATCH',
+            `https://apikeys.googleapis.com/v2/${key.name}?updateMask=restrictions`,
+            { restrictions: { ...restrictions, apiTargets: targets } });
+        if (patch.status === 200) {
+            console.log('✓ Identity Toolkit ajouté aux services autorisés de la clé API web');
+        } else {
+            console.warn('⚠ Correction de la clé API échouée : ' + JSON.stringify(patch.json));
+        }
+        return;
+    }
+    console.warn('⚠ Clé API web absente de la liste du projet — si la connexion est bloquée, ' +
+        'ajoutez « Identity Toolkit API » à ses restrictions dans Google Cloud Console');
+}
+
 async function main() {
     const [email, password] = process.argv.slice(2);
     if (!email || !password) {
@@ -113,6 +164,9 @@ async function main() {
     } else {
         console.warn('⚠ Impossible de désactiver l\'auto-inscription : ' + JSON.stringify(lock.json));
     }
+
+    // 4. Restrictions de la clé API web
+    await ensureApiKeyAllowsAuth(token);
 
     console.log(
         '\nTerminé ! Connectez-vous sur la console d\'admin :\n' +

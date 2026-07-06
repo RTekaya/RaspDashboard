@@ -49,8 +49,10 @@ cette première étape, elle se fait donc en 1 clic dans la console web) :
    node scripts/setup-auth.js tekaya.rami@gmail.com 'VotreMotDePasse'
    ```
 
-   Le script active le provider Email/Mot de passe, crée votre compte admin et
-   **ferme l'auto-inscription** (personne d'autre ne pourra créer de compte).
+   Le script active le provider Email/Mot de passe, crée votre compte admin,
+   **ferme l'auto-inscription** (personne d'autre ne pourra créer de compte) et
+   vérifie que la clé API web du projet autorise le service d'authentification
+   (les clés créées avant l'activation d'Auth le bloquent).
 3. Connectez-vous sur https://raspdash-config.web.app — c'est prêt.
 
 > **Sécurité** : les règles Firestore (`firestore.rules`) n'autorisent l'écriture
@@ -207,6 +209,11 @@ attrapée et loguée : elle n'affecte ni les autres composants ni le moteur.
 - **Rien ne s'affiche ?** Vérifiez : `enabled` à `true` ; zone/ordre corrects ;
   console navigateur ; et que le `type` est bien `custom` (un type inconnu est
   ignoré silencieusement).
+- **Connexion refusée alors que le compte existe** (erreur mentionnant
+  « blocked ») : la clé API web n'autorise pas Identity Toolkit. Relancez
+  `node scripts/setup-auth.js …` (il corrige la clé), ou ajoutez « Identity
+  Toolkit API » aux restrictions de la clé dans Google Cloud Console →
+  APIs & Services → Credentials.
 
 ## 7. Sécurité — à savoir
 

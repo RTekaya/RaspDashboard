@@ -41,9 +41,15 @@ const AUTH_ERRORS = {
 function authErrorMessage(err) {
     const code = err.code || '';
     if (AUTH_ERRORS[code]) return AUTH_ERRORS[code];
-    // Auth pas encore configuré : selon l'état du projet, l'API renvoie
-    // 'configuration-not-found' ou un code '...-are-blocked'.
-    if (code.includes('configuration-not-found') || code.includes('blocked')) return AUTH_SETUP_MSG;
+    if (code.includes('configuration-not-found')) return AUTH_SETUP_MSG;
+    // Clé API créée avant l'activation d'Auth : ses restrictions n'incluent
+    // pas Identity Toolkit et Google bloque la connexion.
+    if (code.includes('blocked')) {
+        return "La clé API du projet bloque le service d'authentification.\n" +
+            "Relancez : node scripts/setup-auth.js <email> <mot-de-passe>\n" +
+            "(il ajoute « Identity Toolkit API » aux restrictions de la clé ;\n" +
+            "sinon : Google Cloud Console → APIs & Services → Credentials → Browser key)";
+    }
     return `Erreur : ${code || err.message}`;
 }
 
