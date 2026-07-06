@@ -18,7 +18,10 @@
 
 body {
     min-height: 100vh;
-    background: var(--bg) radial-gradient(1200px 600px at 20% -10%, rgba(74, 222, 128, 0.08), transparent),
+    /* couleur et calques séparés : une couleur dans un shorthand multi-calques
+       invalide toute la déclaration (page blanche) */
+    background-color: var(--bg);
+    background-image: radial-gradient(1200px 600px at 20% -10%, rgba(74, 222, 128, 0.08), transparent),
         radial-gradient(1000px 500px at 90% 110%, rgba(59, 130, 246, 0.08), transparent);
     font-family: 'Roboto', sans-serif;
     color: var(--text);
