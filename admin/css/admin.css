@@ -641,6 +641,15 @@ textarea:focus {
     accent-color: var(--accent-dark);
 }
 
+.cfg-json {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    min-height: 96px;
+    resize: vertical;
+    white-space: pre;
+}
+
 .cfg-aide {
     display: block;
     font-size: 0.72rem;

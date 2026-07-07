@@ -88,11 +88,17 @@ HTML utilisent des ids globaux).
 
 ### Configurer un type intégré
 
-Les types intégrés se règlent via ✎ Modifier : l'éditeur affiche un
-**formulaire** (listes déroulantes de durées, choix de source…) — plus besoin
-de retenir les clés JSON. Le lien « Mode avancé (JSON) » donne accès au JSON
-brut si besoin ; les clés inconnues du formulaire y sont préservées. Le
-changement s'applique instantanément à l'écran.
+Tous les composants se règlent via ✎ Modifier : l'éditeur affiche un
+**formulaire** — plus besoin de retenir les clés JSON. Pour les types intégrés
+et le fond d'écran, le formulaire est défini à la main (libellés français,
+listes de durées, choix de source, champs conditionnels). Pour les composants
+custom, il est **déduit automatiquement de la config** : un nombre nommé
+`…Ms` devient une liste de durées, un booléen une case à cocher, un texte un
+champ, une liste/objet un mini-éditeur JSON dédié (onglet Config de
+l'éditeur). Le lien « Mode avancé (JSON) » donne accès au JSON brut ; les
+clés inconnues du formulaire y sont préservées, et une clé ajoutée en mode
+avancé devient un champ au retour en mode simple. Le changement s'applique
+instantanément à l'écran.
 
 Référence des clés sous-jacentes (mode avancé) :
 

@@ -339,6 +339,30 @@ let editingType = 'custom';
 let currentSchema = null;    // configSchema du type édité (null => JSON libre)
 let configFormMode = false;  // true => le formulaire fait foi, false => le JSON
 let editorBaseConfig = {};   // config d'origine : les clés hors schéma sont préservées
+let schemaIsAuto = false;    // schéma déduit des valeurs (composants custom)
+
+// Libellés français pour les clés de config courantes (schéma auto-déduit).
+const AUTO_LABELS = {
+    intervalleMs: 'Intervalle', refreshMs: 'Rafraîchissement', aleatoire: 'Ordre aléatoire',
+    liste: 'Liste', titre: 'Titre', texte: 'Texte', title: 'Titre', date: 'Date',
+    step: 'Pas', devise: 'Devise', lat: 'Latitude', lon: 'Longitude', url: 'URL',
+};
+
+// Pour les composants custom (config libre) : déduit un formulaire des valeurs.
+// nombre nommé *Ms/intervalle/refresh/delai → liste de durées ; booléen → case ;
+// nombre → champ numérique ; texte → champ texte ; tableau/objet → mini JSON.
+function buildAutoSchema(config) {
+    return Object.entries(config).map(([cle, valeur]) => {
+        const label = AUTO_LABELS[cle] || cle;
+        if (typeof valeur === 'number' && (/(intervalle|refresh|delai)/i.test(cle) || /Ms$/.test(cle))) {
+            return { cle, label, type: 'duree', defaut: valeur, min: 1000 };
+        }
+        if (typeof valeur === 'boolean') return { cle, label, type: 'bool', defaut: valeur };
+        if (typeof valeur === 'number') return { cle, label, type: 'nombre', defaut: valeur };
+        if (typeof valeur === 'string') return { cle, label, type: 'texte', defaut: valeur };
+        return { cle, label, type: 'json', defaut: valeur };
+    });
+}
 
 // ------------------------------------------------------------------
 // Formulaire de configuration généré depuis le configSchema d'un type
@@ -347,6 +371,11 @@ let editorBaseConfig = {};   // config d'origine : les clés hors schéma sont p
 function renderConfigForm(schema, config) {
     const holder = $('config-form');
     holder.innerHTML = '';
+    if (!schema.length) {
+        holder.innerHTML = '<div class="zone-empty">Aucun paramètre dans la config — ajoutez des clés via ' +
+            '« Mode avancé (JSON) », elles apparaîtront ici sous forme de champs.</div>';
+        return;
+    }
     for (const champ of schema) {
         const valeur = config[champ.cle] !== undefined ? config[champ.cle] : champ.defaut;
 
@@ -396,6 +425,12 @@ function renderConfigForm(schema, config) {
             if (champ.min !== undefined) input.min = champ.min;
             if (champ.max !== undefined) input.max = champ.max;
             input.value = valeur;
+        } else if (champ.type === 'json') {
+            input = document.createElement('textarea');
+            input.rows = 5;
+            input.classList.add('cfg-json');
+            input.spellcheck = false;
+            input.value = JSON.stringify(valeur, null, 2);
         } else { // texte
             input = document.createElement('input');
             input.type = 'text';
@@ -442,6 +477,13 @@ function configFormValues() {
         if (!input) continue;
         if (champ.type === 'duree') config[champ.cle] = Number(input.value);
         else if (champ.type === 'bool') config[champ.cle] = input.checked;
+        else if (champ.type === 'json') {
+            try {
+                config[champ.cle] = JSON.parse(input.value.trim() || 'null');
+            } catch (err) {
+                throw new Error(`Champ « ${champ.label} » : JSON invalide (${err.message})`);
+            }
+        }
         else if (champ.type === 'nombre') {
             let n = Number(input.value) || 0;
             if (champ.min !== undefined) n = Math.max(champ.min, n);
@@ -454,9 +496,10 @@ function configFormValues() {
 
 function setConfigMode(formMode) {
     configFormMode = formMode;
-    $('config-form').classList.toggle('hidden', !formMode);
-    $('code-editors').classList.toggle('hidden', formMode);
     $('advanced-toggle').textContent = formMode ? 'Mode avancé (JSON)' : 'Mode simple (formulaire)';
+    // La visibilité formulaire/JSON dépend de l'onglet actif : on rafraîchit.
+    const active = document.querySelector('#editor-tabs .tab.active');
+    selectTab(active ? active.dataset.tab : 'config');
 }
 
 $('advanced-toggle').addEventListener('click', () => {
@@ -477,7 +520,15 @@ $('advanced-toggle').addEventListener('click', () => {
             errEl.classList.remove('hidden');
             return;
         }
+        if (cfg === null || typeof cfg !== 'object' || Array.isArray(cfg)) {
+            errEl.textContent = 'La config doit être un objet JSON, ex. { "intervalleMs": 60000 }';
+            errEl.classList.remove('hidden');
+            return;
+        }
         editorBaseConfig = cfg;
+        // Schéma auto : les clés ajoutées/supprimées dans le JSON doivent
+        // se refléter dans le formulaire.
+        if (schemaIsAuto) currentSchema = buildAutoSchema(cfg);
         renderConfigForm(currentSchema, cfg);
         setConfigMode(true);
     }
@@ -518,17 +569,14 @@ function openEditor(id) {
     document.querySelector('.editor-layout').classList.toggle('no-preview', !isCustom);
     selectTab(isCustom ? 'html' : 'config');
 
-    // Types avec configSchema : formulaire (listes déroulantes) par défaut,
-    // JSON accessible via « Mode avancé ». Types custom : JSON libre.
-    currentSchema = (!isCustom && BUILTIN_TYPES[editingType] && BUILTIN_TYPES[editingType].configSchema) || null;
+    // Formulaire de config pour TOUS les composants : schéma déclaré pour les
+    // types intégrés, sinon déduit automatiquement des valeurs de la config.
     editorBaseConfig = { ...(src.config || {}) };
-    $('advanced-toggle').classList.toggle('hidden', !currentSchema);
-    if (currentSchema) {
-        renderConfigForm(currentSchema, editorBaseConfig);
-        setConfigMode(true);
-    } else {
-        setConfigMode(false);
-    }
+    const declared = !isCustom && BUILTIN_TYPES[editingType] && BUILTIN_TYPES[editingType].configSchema;
+    schemaIsAuto = !declared;
+    currentSchema = declared || buildAutoSchema(editorBaseConfig);
+    renderConfigForm(currentSchema, editorBaseConfig);
+    setConfigMode(true);
 
     $('delete-btn').classList.toggle('hidden', !id);
     $('editor-error').classList.add('hidden');
@@ -540,8 +588,11 @@ function openEditor(id) {
 function selectTab(tab) {
     document.querySelectorAll('#editor-tabs .tab').forEach((t) =>
         t.classList.toggle('active', t.dataset.tab === tab));
+    // Dans l'onglet Config, le formulaire remplace le JSON brut (sauf mode avancé).
     document.querySelectorAll('.code-area').forEach((a) =>
-        a.classList.toggle('hidden', a.dataset.pane !== tab));
+        a.classList.toggle('hidden', a.dataset.pane !== tab || (tab === 'config' && configFormMode)));
+    $('config-form').classList.toggle('hidden', tab !== 'config' || !configFormMode);
+    $('advanced-toggle').classList.toggle('hidden', tab !== 'config' || !currentSchema);
 }
 
 document.querySelectorAll('#editor-tabs .tab').forEach((t) =>
@@ -577,6 +628,12 @@ $('snippet-select').addEventListener('change', () => {
     $('f-css').value = snip.css;
     $('f-js').value = snip.js;
     $('f-config').value = JSON.stringify(snip.config, null, 2);
+    // Reconstruit le formulaire de config à partir de l'exemple inséré.
+    editorBaseConfig = { ...snip.config };
+    schemaIsAuto = true;
+    currentSchema = buildAutoSchema(editorBaseConfig);
+    renderConfigForm(currentSchema, editorBaseConfig);
+    setConfigMode(true);
     selectTab('html');
 });
 
@@ -595,7 +652,10 @@ function readEditorForm() {
         }
     }
     const data = {
-        name: $('f-name').value.trim() || 'Sans nom',
+        // Un type intégré sauvé sans nom reprend le libellé de son type.
+        name: $('f-name').value.trim()
+            || (BUILTIN_TYPES[editingType] && BUILTIN_TYPES[editingType].label)
+            || 'Sans nom',
         type: editingType,
         zone: $('f-zone').value,
         order: Number($('f-order').value) || 1,
