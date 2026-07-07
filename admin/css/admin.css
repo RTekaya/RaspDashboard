@@ -605,6 +605,55 @@ textarea:focus {
     tab-size: 4;
 }
 
+/* ------------------------------ Config form ------------------------------ */
+.config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.cfg-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.cfg-field>label {
+    flex: 0 0 42%;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    padding-top: 8px;
+}
+
+.cfg-control {
+    flex: 1;
+    min-width: 0;
+}
+
+.cfg-control input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 9px;
+    accent-color: var(--accent-dark);
+}
+
+.cfg-aide {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    line-height: 1.3;
+}
+
+.advanced-toggle {
+    align-self: flex-start;
+    margin-top: 0;
+}
+
 .editor-error {
     background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.4);

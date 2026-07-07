@@ -2,6 +2,21 @@
 // A built-in type only supports ONE instance at a time (their DOM ids are global),
 // so the picker disables a type that already has a document.
 
+// Durées proposées dans les listes déroulantes (ms → libellé). Chaque champ
+// 'duree' filtre cette liste avec son minimum.
+export const DUREES = [
+    [1000, '1 seconde'], [5000, '5 secondes'], [10000, '10 secondes'], [30000, '30 secondes'],
+    [60000, '1 minute'], [120000, '2 minutes'], [300000, '5 minutes'], [600000, '10 minutes'],
+    [1800000, '30 minutes'], [3600000, '1 heure'], [10800000, '3 heures'], [21600000, '6 heures'],
+    [43200000, '12 heures'], [86400000, '24 heures'],
+];
+
+// Un configSchema décrit les champs du formulaire de configuration d'un type.
+// Types de champ : 'duree' (liste de durées), 'choix' (enum), 'texte', 'bool',
+// 'nombre'. 'visibleSi' : { cle: valeur } — le champ n'apparaît que si un autre
+// champ du formulaire a cette valeur. Les clés absentes du schéma mais présentes
+// dans la config existante sont préservées telles quelles.
+
 export const BUILTIN_TYPES = {
     background: {
         label: "Fond d'écran",
@@ -12,6 +27,34 @@ export const BUILTIN_TYPES = {
             '"bing" (photos du jour Bing, qualité paysage), ' +
             '"fixe" (une image fixe via "url"). Désactivé = fond noir.',
         defaultZone: 'top',
+        configSchema: [
+            { cle: 'intervalleMs', label: "Changer d'image toutes les", type: 'duree', defaut: 300000, min: 30000 },
+            {
+                cle: 'source', label: 'Source des images', type: 'choix', defaut: 'picsum',
+                options: [
+                    { valeur: 'picsum', label: 'Picsum — photos variées' },
+                    { valeur: 'loremflickr', label: 'LoremFlickr — photos par mot-clé' },
+                    { valeur: 'bing', label: 'Bing — photos du jour' },
+                    { valeur: 'fixe', label: 'Image fixe (URL)' },
+                ],
+            },
+            {
+                cle: 'categorie', label: 'Thème (mot-clé)', type: 'texte', defaut: 'nature',
+                visibleSi: { source: 'loremflickr' },
+                aide: 'un seul mot, sans accent — ex. mountain, mosque, city, cat, sea',
+            },
+            {
+                cle: 'url', label: "URL de l'image", type: 'texte', defaut: '',
+                visibleSi: { source: 'fixe' },
+                aide: 'adresse https d\'une image (800×480 idéalement)',
+            },
+            { cle: 'niveauxDeGris', label: 'Noir et blanc', type: 'bool', defaut: false, visibleSi: { source: 'picsum' } },
+            {
+                cle: 'flou', label: 'Flou (0 = net)', type: 'nombre', defaut: 0, min: 0, max: 10,
+                visibleSi: { source: 'picsum' },
+                aide: 'un fond flouté met les panneaux en valeur',
+            },
+        ],
     },
     clock: {
         label: 'Horloge & date',
@@ -23,30 +66,54 @@ export const BUILTIN_TYPES = {
         description: 'Température actuelle et prévisions (via /api/weather, Open-Meteo). ' +
             'Config : { "intervalleMs": 1800000 } — rafraîchissement (défaut 30 min, borné par le cache serveur de 30 min).',
         defaultZone: 'left',
+        configSchema: [
+            {
+                cle: 'intervalleMs', label: 'Rafraîchir toutes les', type: 'duree', defaut: 1800000, min: 60000,
+                aide: 'le serveur garde 30 min en cache : inutile de descendre en dessous',
+            },
+        ],
     },
     stats: {
         label: 'Stats système',
         description: 'CPU, RAM et espace disque du Raspberry (via /api/stats). ' +
             'Config : { "intervalleMs": 5000 } — rafraîchissement (défaut 5 s).',
         defaultZone: 'left',
+        configSchema: [
+            { cle: 'intervalleMs', label: 'Rafraîchir toutes les', type: 'duree', defaut: 5000, min: 1000 },
+        ],
     },
     quran: {
         label: 'Verset du Coran',
         description: 'Un verset aléatoire (via /api/quran). ' +
             'Config : { "intervalleMs": 3600000 } — temps entre deux versets (défaut 1 h, minimum 1 min).',
         defaultZone: 'top',
+        configSchema: [
+            {
+                cle: 'intervalleMs', label: 'Changer de verset toutes les', type: 'duree', defaut: 3600000, min: 60000,
+                aide: 'le serveur adapte automatiquement la fraîcheur de son cache',
+            },
+        ],
     },
     prayers: {
         label: 'Heures de prière',
         description: 'Les six horaires du jour, avec la prochaine prière mise en avant (via /api/prayers). ' +
             'Config : { "intervalleMs": 43200000 } — récupération des horaires (défaut 12 h).',
         defaultZone: 'right',
+        configSchema: [
+            {
+                cle: 'intervalleMs', label: 'Récupérer les horaires toutes les', type: 'duree', defaut: 43200000, min: 3600000,
+                aide: 'la mise en avant de la prochaine prière se met à jour chaque minute quoi qu\'il arrive',
+            },
+        ],
     },
     hijri_services: {
         label: 'Date hijri & services',
         description: 'Date hijri, phase de lune et boutons de contrôle Jellyfin / n8n. ' +
             'Config : { "intervalleMs": 43200000 } — vérification du statut des services (défaut 12 h).',
         defaultZone: 'right',
+        configSchema: [
+            { cle: 'intervalleMs', label: 'Vérifier les services toutes les', type: 'duree', defaut: 43200000, min: 60000 },
+        ],
     },
 };
 

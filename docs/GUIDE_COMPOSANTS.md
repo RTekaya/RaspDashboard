@@ -88,8 +88,13 @@ HTML utilisent des ids globaux).
 
 ### Configurer un type intégré
 
-Les types intégrés se règlent via ✎ Modifier → onglet **Config (JSON)**, avec la
-clé `intervalleMs` (millisecondes). Le changement s'applique instantanément :
+Les types intégrés se règlent via ✎ Modifier : l'éditeur affiche un
+**formulaire** (listes déroulantes de durées, choix de source…) — plus besoin
+de retenir les clés JSON. Le lien « Mode avancé (JSON) » donne accès au JSON
+brut si besoin ; les clés inconnues du formulaire y sont préservées. Le
+changement s'applique instantanément à l'écran.
+
+Référence des clés sous-jacentes (mode avancé) :
 
 | Type | `intervalleMs` contrôle | Défaut | Remarque |
 |---|---|---|---|

@@ -6,7 +6,7 @@ import {
     getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
-import { BUILTIN_TYPES, CUSTOM_STARTER, SNIPPETS } from "./catalog.js";
+import { BUILTIN_TYPES, CUSTOM_STARTER, SNIPPETS, DUREES } from "./catalog.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -336,6 +336,152 @@ async function createBuiltin(type, meta) {
 // ------------------------------------------------------------------
 let editingId = null;   // null => creating a new custom component
 let editingType = 'custom';
+let currentSchema = null;    // configSchema du type édité (null => JSON libre)
+let configFormMode = false;  // true => le formulaire fait foi, false => le JSON
+let editorBaseConfig = {};   // config d'origine : les clés hors schéma sont préservées
+
+// ------------------------------------------------------------------
+// Formulaire de configuration généré depuis le configSchema d'un type
+// (les listes déroulantes évitent d'avoir à retenir les clés JSON).
+// ------------------------------------------------------------------
+function renderConfigForm(schema, config) {
+    const holder = $('config-form');
+    holder.innerHTML = '';
+    for (const champ of schema) {
+        const valeur = config[champ.cle] !== undefined ? config[champ.cle] : champ.defaut;
+
+        const row = document.createElement('div');
+        row.className = 'cfg-field';
+        row.dataset.cle = champ.cle;
+
+        const label = document.createElement('label');
+        label.textContent = champ.label;
+        const control = document.createElement('div');
+        control.className = 'cfg-control';
+
+        let input;
+        if (champ.type === 'duree') {
+            input = document.createElement('select');
+            const presets = DUREES.filter(([ms]) => !champ.min || ms >= champ.min);
+            if (valeur !== undefined && !presets.some(([ms]) => ms === valeur)) {
+                const opt = document.createElement('option');
+                opt.value = String(valeur);
+                opt.textContent = `${valeur} ms (personnalisé)`;
+                input.appendChild(opt);
+            }
+            for (const [ms, libelle] of presets) {
+                const opt = document.createElement('option');
+                opt.value = String(ms);
+                opt.textContent = libelle;
+                input.appendChild(opt);
+            }
+            input.value = String(valeur);
+        } else if (champ.type === 'choix') {
+            input = document.createElement('select');
+            for (const o of champ.options) {
+                const opt = document.createElement('option');
+                opt.value = o.valeur;
+                opt.textContent = o.label;
+                input.appendChild(opt);
+            }
+            input.value = String(valeur);
+            input.addEventListener('change', evalCfgVisibility);
+        } else if (champ.type === 'bool') {
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = !!valeur;
+        } else if (champ.type === 'nombre') {
+            input = document.createElement('input');
+            input.type = 'number';
+            if (champ.min !== undefined) input.min = champ.min;
+            if (champ.max !== undefined) input.max = champ.max;
+            input.value = valeur;
+        } else { // texte
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = valeur || '';
+        }
+        input.dataset.cle = champ.cle;
+        input.classList.add('cfg-input');
+
+        control.appendChild(input);
+        if (champ.aide) {
+            const aide = document.createElement('span');
+            aide.className = 'cfg-aide';
+            aide.textContent = champ.aide;
+            control.appendChild(aide);
+        }
+        row.append(label, control);
+        holder.appendChild(row);
+    }
+    evalCfgVisibility();
+}
+
+// Montre/cache les champs conditionnels (visibleSi) selon les valeurs actuelles.
+function evalCfgVisibility() {
+    if (!currentSchema) return;
+    const valeurs = {};
+    $('config-form').querySelectorAll('.cfg-input').forEach((inp) => {
+        valeurs[inp.dataset.cle] = inp.type === 'checkbox' ? inp.checked : inp.value;
+    });
+    for (const champ of currentSchema) {
+        if (!champ.visibleSi) continue;
+        const row = $('config-form').querySelector(`.cfg-field[data-cle="${champ.cle}"]`);
+        if (!row) continue;
+        const visible = Object.entries(champ.visibleSi)
+            .every(([cle, val]) => String(valeurs[cle]) === String(val));
+        row.classList.toggle('hidden', !visible);
+    }
+}
+
+// Config résultante = config d'origine (clés inconnues préservées) + champs du schéma.
+function configFormValues() {
+    const config = { ...editorBaseConfig };
+    for (const champ of currentSchema) {
+        const input = $('config-form').querySelector(`.cfg-input[data-cle="${champ.cle}"]`);
+        if (!input) continue;
+        if (champ.type === 'duree') config[champ.cle] = Number(input.value);
+        else if (champ.type === 'bool') config[champ.cle] = input.checked;
+        else if (champ.type === 'nombre') {
+            let n = Number(input.value) || 0;
+            if (champ.min !== undefined) n = Math.max(champ.min, n);
+            if (champ.max !== undefined) n = Math.min(champ.max, n);
+            config[champ.cle] = n;
+        } else config[champ.cle] = input.value.trim();
+    }
+    return config;
+}
+
+function setConfigMode(formMode) {
+    configFormMode = formMode;
+    $('config-form').classList.toggle('hidden', !formMode);
+    $('code-editors').classList.toggle('hidden', formMode);
+    $('advanced-toggle').textContent = formMode ? 'Mode avancé (JSON)' : 'Mode simple (formulaire)';
+}
+
+$('advanced-toggle').addEventListener('click', () => {
+    const errEl = $('editor-error');
+    errEl.classList.add('hidden');
+    if (configFormMode) {
+        // formulaire → JSON : on sérialise l'état courant du formulaire
+        $('f-config').value = JSON.stringify(configFormValues(), null, 2);
+        setConfigMode(false);
+        selectTab('config');
+    } else {
+        // JSON → formulaire : uniquement si le JSON est valide
+        let cfg;
+        try {
+            cfg = JSON.parse($('f-config').value.trim() || '{}');
+        } catch (err) {
+            errEl.textContent = `JSON invalide : ${err.message}`;
+            errEl.classList.remove('hidden');
+            return;
+        }
+        editorBaseConfig = cfg;
+        renderConfigForm(currentSchema, cfg);
+        setConfigMode(true);
+    }
+});
 
 function openEditor(id) {
     editingId = id;
@@ -371,6 +517,18 @@ function openEditor(id) {
     $('preview-panel').classList.toggle('hidden', !isCustom);
     document.querySelector('.editor-layout').classList.toggle('no-preview', !isCustom);
     selectTab(isCustom ? 'html' : 'config');
+
+    // Types avec configSchema : formulaire (listes déroulantes) par défaut,
+    // JSON accessible via « Mode avancé ». Types custom : JSON libre.
+    currentSchema = (!isCustom && BUILTIN_TYPES[editingType] && BUILTIN_TYPES[editingType].configSchema) || null;
+    editorBaseConfig = { ...(src.config || {}) };
+    $('advanced-toggle').classList.toggle('hidden', !currentSchema);
+    if (currentSchema) {
+        renderConfigForm(currentSchema, editorBaseConfig);
+        setConfigMode(true);
+    } else {
+        setConfigMode(false);
+    }
 
     $('delete-btn').classList.toggle('hidden', !id);
     $('editor-error').classList.add('hidden');
@@ -424,13 +582,17 @@ $('snippet-select').addEventListener('change', () => {
 
 function readEditorForm() {
     let config;
-    try {
-        config = JSON.parse($('f-config').value.trim() || '{}');
-    } catch (err) {
-        throw new Error(`Config JSON invalide : ${err.message}`);
-    }
-    if (config === null || typeof config !== 'object' || Array.isArray(config)) {
-        throw new Error('La config doit être un objet JSON, ex. { "step": 1 }');
+    if (configFormMode && currentSchema) {
+        config = configFormValues();
+    } else {
+        try {
+            config = JSON.parse($('f-config').value.trim() || '{}');
+        } catch (err) {
+            throw new Error(`Config JSON invalide : ${err.message}`);
+        }
+        if (config === null || typeof config !== 'object' || Array.isArray(config)) {
+            throw new Error('La config doit être un objet JSON, ex. { "step": 1 }');
+        }
     }
     const data = {
         name: $('f-name').value.trim() || 'Sans nom',
