@@ -144,6 +144,79 @@ ctx.every(5000, async () => {
         config: {},
     },
     {
+        id: 'adhkar',
+        label: 'Adhkar en rotation',
+        name: 'Adhkar',
+        html: `<div class="adhkar">
+    <div class="adhkar-text" id="adhkar-text" dir="rtl">…</div>
+</div>`,
+        css: `.adhkar {
+    text-align: center;
+}
+
+.adhkar-text {
+    font-family: 'Amiri', serif;
+    font-size: 1.25rem;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+    transition: opacity 0.4s;
+}
+
+.adhkar-text.fade {
+    opacity: 0;
+}`,
+        js: `// La liste vit dans la config : modifiable depuis l'admin sans toucher au code.
+const DEFAUT = ['سُبْحَانَ اللَّهِ وَبِحَمْدِهِ', 'أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ'];
+const liste = (Array.isArray(ctx.config.liste) && ctx.config.liste.length) ? ctx.config.liste : DEFAUT;
+const el = ctx.root.querySelector('#adhkar-text');
+let i = -1;
+let pret = false;
+
+// Une seule ligne garantie : réduit la police si le texte est long,
+// pour que la hauteur du panneau ne varie jamais (écran 480 px serré).
+function afficherTexte(t) {
+    el.style.fontSize = '';
+    el.textContent = t;
+    let taille = 1.25;
+    while (el.scrollWidth > el.clientWidth && taille > 0.85) {
+        taille -= 0.05;
+        el.style.fontSize = taille + 'rem';
+    }
+}
+
+ctx.every(ctx.config.intervalleMs || 60000, () => {
+    i = ctx.config.aleatoire
+        ? Math.floor(Math.random() * liste.length)
+        : (i + 1) % liste.length;
+    if (!pret) {                       // premier affichage : sans fondu
+        pret = true;
+        afficherTexte(liste[i]);
+        return;
+    }
+    el.classList.add('fade');          // fondu sortant…
+    setTimeout(() => {                 // …puis nouveau texte en fondu entrant
+        afficherTexte(liste[i]);
+        el.classList.remove('fade');
+    }, 400);
+});`,
+        config: {
+            intervalleMs: 60000,
+            aleatoire: false,
+            liste: [
+                'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ',
+                'سُبْحَانَ اللَّهِ الْعَظِيمِ',
+                'لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ',
+                'اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَىٰ نَبِيِّنَا مُحَمَّدٍ',
+                'أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ',
+                'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ',
+                'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
+                'سُبْحَانَ اللَّهِ وَالْحَمْدُ لِلَّهِ وَلَا إِلَٰهَ إِلَّا اللَّهُ وَاللَّهُ أَكْبَرُ',
+            ],
+        },
+    },
+    {
         id: 'countdown',
         label: 'Compte à rebours vers une date',
         name: 'Compte à rebours',

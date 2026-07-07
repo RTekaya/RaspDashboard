@@ -196,7 +196,7 @@ ctx.every(6 * 3600000, async () => {       // 4×/jour suffit
 | 🟢 Statut d'un service systemd (ssh, docker…) | `/api/debug_service?name=<service>` (déjà en place) | droite | pastille verte si `stdout === "active"` ; lecture seule |
 | 🌡️ Météo d'une 2ᵉ ville | Open-Meteo direct (CORS ouvert) | gauche | même API que le widget météo, autres coordonnées |
 | 🎂 Prochain anniversaire | liste `{nom, date}` dans la config | droite | calcul local du plus proche, « J-12 » |
-| 📿 Adhkar / citations en rotation | liste dans la config | haut | `ctx.every(60000)` pour passer au suivant, zéro API |
+| 📿 Adhkar / citations en rotation | liste dans la config | haut | ✅ **implémenté** : actif sur le dashboard et dans le menu « Exemples… » de l'admin. Liste/intervalle/aléatoire modifiables dans Config ; police auto-réduite pour tenir sur une ligne |
 | 📅 Mini-calendrier du mois | aucune — généré en JS | droite | jour courant surligné ; compact en `font-size: 0.7rem` |
 | ₿ Prix crypto | CoinGecko | gauche | déjà dans le menu « Exemples… » de l'admin |
 | ⏳ Compte à rebours | config | libre | déjà dans le menu « Exemples… » de l'admin |
