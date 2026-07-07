@@ -101,6 +101,33 @@ clé `intervalleMs` (millisecondes). Le changement s'applique instantanément :
 
 Exemple — un verset toutes les 10 minutes : `{ "intervalleMs": 600000 }`.
 
+### Le fond d'écran
+
+Le fond (rotation d'images derrière les panneaux) a sa propre section dans
+l'admin et se règle de la même façon (✎ → Config). Interrupteur désactivé =
+fond noir. Clés disponibles :
+
+| Clé | Valeurs | Effet |
+|---|---|---|
+| `intervalleMs` | ms (min 30 000) | temps entre deux images (défaut 5 min) |
+| `source` | `"picsum"` | photos variées (défaut) |
+| | `"loremflickr"` | photos par mot-clé → clé `categorie` |
+| | `"bing"` | photos du jour Bing (belle qualité paysage) |
+| | `"fixe"` | une seule image → clé `url` |
+| `categorie` | un mot-clé ASCII (`"mountain"`, `"mosque"`, `"city"`, `"cat"`…) | thème des photos LoremFlickr — un seul mot, sans accent (nettoyé automatiquement) |
+| `niveauxDeGris` | `true/false` | Picsum en noir et blanc |
+| `flou` | `1` à `10` | Picsum flouté (met les panneaux en valeur) |
+| `url` | URL d'image | source `fixe` |
+
+Exemples :
+`{ "source": "loremflickr", "categorie": "mountain", "intervalleMs": 600000 }` ;
+`{ "source": "picsum", "flou": 3 }` ;
+`{ "source": "bing", "intervalleMs": 3600000 }`.
+
+En cas d'échec de chargement (service en panne, URL invalide), l'image
+actuelle reste affichée. Supprimer le document « Fond d'écran » ramène le
+comportement par défaut (Picsum, 5 min).
+
 ## 4. Créer un composant from scratch
 
 « ＋ Nouveau composant » → **Composant custom**. L'éditeur s'ouvre avec un exemple

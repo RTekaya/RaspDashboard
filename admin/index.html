@@ -47,6 +47,11 @@
                 <button id="new-component-btn" class="btn btn-primary">＋ Nouveau composant</button>
             </div>
 
+            <section class="zone glass" id="background-section" style="margin-bottom: 14px;">
+                <h2>🖼️ Fond d'écran <span class="zone-hint">(rotation d'images derrière les panneaux)</span></h2>
+                <div class="zone-list" id="background-list"></div>
+            </section>
+
             <div class="zones">
                 <section class="zone glass" data-zone="top">
                     <h2>Zone haut <span class="zone-hint">(bandeau supérieur)</span></h2>
@@ -94,7 +99,7 @@
                             <label for="f-name">Nom</label>
                             <input type="text" id="f-name" placeholder="Mon composant">
                         </div>
-                        <div class="field field-small">
+                        <div class="field field-small" id="f-zone-field">
                             <label for="f-zone">Zone</label>
                             <select id="f-zone">
                                 <option value="top">Haut</option>
@@ -102,7 +107,7 @@
                                 <option value="right">Droite</option>
                             </select>
                         </div>
-                        <div class="field field-small">
+                        <div class="field field-small" id="f-order-field">
                             <label for="f-order">Ordre</label>
                             <input type="number" id="f-order" value="1">
                         </div>

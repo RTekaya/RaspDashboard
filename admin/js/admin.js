@@ -117,7 +117,7 @@ function startListening() {
 
 function zoneItems(zone) {
     return [...components.entries()]
-        .filter(([, c]) => c.zone === zone)
+        .filter(([, c]) => c.zone === zone && c.type !== 'background')
         .sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
 }
 
@@ -127,7 +127,51 @@ function displayName(id, c) {
     return id;
 }
 
+// Le fond d'écran a sa propre section : ni zone ni ordre, juste
+// activer/désactiver et configurer.
+function renderBackgroundSection() {
+    const holder = $('background-list');
+    holder.innerHTML = '';
+    const entries = [...components.entries()].filter(([, c]) => c.type === 'background');
+    if (!entries.length) {
+        holder.innerHTML = '<div class="zone-empty">Aucun document — comportement par défaut (Picsum, 5 min). ' +
+            'Créez « Fond d\'écran » via ＋ Nouveau composant pour le configurer.</div>';
+        return;
+    }
+    for (const [id, c] of entries) {
+        const card = document.createElement('div');
+        card.className = 'comp-card' + (c.enabled ? '' : ' disabled');
+
+        const info = document.createElement('div');
+        info.className = 'comp-info';
+        info.innerHTML = '<div class="comp-name"></div><span class="comp-type"></span>';
+        info.querySelector('.comp-name').textContent = displayName(id, c);
+        info.querySelector('.comp-type').textContent =
+            (c.config && c.config.source) ? `background · ${c.config.source}` : 'background';
+
+        const actions = document.createElement('div');
+        actions.className = 'comp-actions';
+        const editBtn = iconBtn('✎', 'Configurer', () => openEditor(id));
+
+        const sw = document.createElement('label');
+        sw.className = 'switch';
+        sw.title = c.enabled ? 'Désactiver (fond noir)' : 'Activer';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!c.enabled;
+        cb.addEventListener('change', () => toggleEnabled(id, cb.checked));
+        const slider = document.createElement('span');
+        slider.className = 'slider';
+        sw.append(cb, slider);
+
+        actions.append(editBtn, sw);
+        card.append(info, actions);
+        holder.appendChild(card);
+    }
+}
+
 function renderList() {
+    renderBackgroundSection();
     for (const zone of ZONES) {
         const holder = $(`zone-list-${zone}`);
         holder.innerHTML = '';
@@ -314,6 +358,10 @@ function openEditor(id) {
 
     // Built-in components have no code to edit — only name/zone/order/config.
     const isCustom = editingType === 'custom';
+    // Le fond d'écran n'a ni zone ni ordre.
+    const isBackground = editingType === 'background';
+    $('f-zone-field').classList.toggle('hidden', isBackground);
+    $('f-order-field').classList.toggle('hidden', isBackground);
     $('code-editors').querySelectorAll('.tab').forEach((t) => {
         const tab = t.dataset.tab;
         t.classList.toggle('hidden', !isCustom && tab !== 'config');

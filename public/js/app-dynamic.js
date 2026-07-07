@@ -21,12 +21,47 @@ function elFromHTML(html) {
 }
 
 // ------------------------------------------------------------------
-// Background logic (always on, not gated by Firestore)
+// Background (rotation d'images) — piloté par le document 'background'
+// de la collection Firestore. Sans document, comportement historique :
+// Picsum toutes les 5 minutes.
 // ------------------------------------------------------------------
 let activeBgIndex = 1;
 
-async function updateBackground() {
-    const randomUrl = `https://picsum.photos/seed/${new Date().getTime()}/800/480`;
+// Chaque source construit une URL d'image directe (sans clé API — la config
+// est publique). Le seed sert au cache-busting.
+const backgroundSources = {
+    // Photos variées. Options : niveauxDeGris (bool), flou (1-10).
+    picsum(cfg, seed) {
+        const params = [];
+        if (cfg.niveauxDeGris) params.push('grayscale');
+        if (cfg.flou) params.push(`blur=${Math.min(10, Math.max(1, cfg.flou))}`);
+        return `https://picsum.photos/seed/${seed}/800/480${params.length ? '?' + params.join('&') : ''}`;
+    },
+    // Photos par mot-clé (Flickr). Le service ne supporte qu'UN mot-clé
+    // ASCII : on nettoie (premier mot, accents retirés). NB : '?x=' est le
+    // seul cache-buster toléré ('?random=' déclenche une erreur 500).
+    loremflickr(cfg, seed) {
+        const mot = String(cfg.categorie || 'nature')
+            .split(',')[0]
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .toLowerCase() || 'nature';
+        return `https://loremflickr.com/800/480/${mot}?x=${seed}`;
+    },
+    // Photo du jour Bing (aléatoire parmi les récentes), qualité paysage.
+    bing(cfg, seed) {
+        return `https://bing.biturl.top/?resolution=1920&format=image&index=random&mkt=fr-FR&t=${seed}`;
+    },
+    // Une URL fixe fournie par l'utilisateur (config.url).
+    fixe(cfg) {
+        return cfg.url || '';
+    },
+};
+
+function updateBackground(cfg) {
+    const build = backgroundSources[cfg.source] || backgroundSources.picsum;
+    const url = build(cfg, Date.now());
+    if (!url) return;
 
     const bg1 = document.getElementById('bg1');
     const bg2 = document.getElementById('bg2');
@@ -39,11 +74,40 @@ async function updateBackground() {
         oldBg.classList.remove('active');
         activeBgIndex = activeBgIndex === 1 ? 2 : 1;
     };
-    newBg.src = randomUrl;
+    // Échec de chargement (service en panne, URL invalide) : on garde
+    // simplement l'image actuelle.
+    newBg.onerror = () => {
+        console.error(`Fond d'écran : échec de chargement de ${url}`);
+    };
+    newBg.src = url;
 }
 
-setInterval(updateBackground, 5 * 60 * 1000);
-updateBackground();
+const bgState = { intervals: [], sig: null };
+const BACKGROUND_DEFAULTS = { enabled: true, config: {} };
+
+function applyBackground(data) {
+    const sig = JSON.stringify([!!data.enabled, data.config || {}]);
+    if (sig === bgState.sig) return; // rien de pertinent n'a changé
+    bgState.sig = sig;
+    bgState.intervals.forEach(clearInterval);
+    bgState.intervals = [];
+
+    if (!data.enabled) {
+        // Désactivé : pas de photo, fond noir sobre.
+        document.getElementById('bg1').classList.remove('active');
+        document.getElementById('bg2').classList.remove('active');
+        return;
+    }
+
+    const cfg = data.config || {};
+    // Plancher 30 s : chaque tick télécharge une image.
+    const intervalMs = Math.max(30 * 1000, cfg.intervalleMs || 5 * 60 * 1000);
+    const tick = () => updateBackground(cfg);
+    tick();
+    bgState.intervals.push(setInterval(tick, intervalMs));
+}
+
+applyBackground(BACKGROUND_DEFAULTS);
 
 // ------------------------------------------------------------------
 // Clock and Date
@@ -588,12 +652,22 @@ onSnapshot(collection(db, 'components'), (snapshot) => {
     snapshot.docChanges().forEach((change) => {
         const id = change.doc.id;
         try {
+            const docData = change.doc.data();
+
+            // Le fond d'écran n'est pas un panneau : il pilote la couche
+            // d'arrière-plan. Document supprimé → retour au comportement
+            // par défaut (Picsum, 5 min).
+            if (docData && docData.type === 'background') {
+                applyBackground(change.type === 'removed' ? BACKGROUND_DEFAULTS : docData);
+                return;
+            }
+
             if (change.type === 'removed') {
                 unmount(id);
                 return;
             }
 
-            const data = change.doc.data();
+            const data = docData;
             const wasMounted = mountedInstances.has(id);
             const shouldMount = !!data.enabled && !!componentRegistry[data.type];
 

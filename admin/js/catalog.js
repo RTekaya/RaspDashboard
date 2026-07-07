@@ -3,6 +3,16 @@
 // so the picker disables a type that already has a document.
 
 export const BUILTIN_TYPES = {
+    background: {
+        label: "Fond d'écran",
+        description: "Rotation d'images derrière les panneaux. Config : " +
+            '{ "intervalleMs": 300000 } (défaut 5 min, minimum 30 s) ; ' +
+            '"source" : "picsum" (photos variées, options "niveauxDeGris" et "flou" 1-10), ' +
+            '"loremflickr" (photos par mot-clé via "categorie", ex. "mountain", "mosque", "city" — un seul mot, sans accent), ' +
+            '"bing" (photos du jour Bing, qualité paysage), ' +
+            '"fixe" (une image fixe via "url"). Désactivé = fond noir.',
+        defaultZone: 'top',
+    },
     clock: {
         label: 'Horloge & date',
         description: 'Heure et date du jour. Un clic sur le panneau propose de quitter le mode kiosque.',
