@@ -198,6 +198,7 @@ ctx.every(6 * 3600000, async () => {       // 4×/jour suffit
 | 🎂 Prochain anniversaire | liste `{nom, date}` dans la config | droite | calcul local du plus proche, « J-12 » |
 | 📿 Adhkar / citations en rotation | liste dans la config | haut | ✅ **implémenté** : actif sur le dashboard et dans le menu « Exemples… » de l'admin. Liste/intervalle/aléatoire modifiables dans Config ; police auto-réduite pour tenir sur une ligne |
 | 📅 Mini-calendrier du mois | aucune — généré en JS | droite | jour courant surligné ; compact en `font-size: 0.7rem` |
+| 📜 Hadith en rotation | liste `{texte, source}` dans la config | haut | ✅ **implémenté** : créé dans l'admin (désactivé — 3 bandeaux en haut débordent, choisissez votre combinaison) et dans le menu « Exemples… » |
 | ₿ Prix crypto | CoinGecko | gauche | déjà dans le menu « Exemples… » de l'admin |
 | ⏳ Compte à rebours | config | libre | déjà dans le menu « Exemples… » de l'admin |
 

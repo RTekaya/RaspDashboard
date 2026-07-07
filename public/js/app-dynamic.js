@@ -130,7 +130,8 @@ async function updateWeather() {
 
 function startWeatherInto(ctx) {
     updateWeather();
-    ctx.intervals.push(setInterval(updateWeather, 30 * 60 * 1000));
+    // NB : le cache serveur de /api/weather reste de 30 min.
+    ctx.intervals.push(setInterval(updateWeather, ctx.config.intervalleMs || 30 * 60 * 1000));
 }
 
 // ------------------------------------------------------------------
@@ -188,7 +189,7 @@ async function updateStats() {
 
 function startStatsInto(ctx) {
     updateStats();
-    ctx.intervals.push(setInterval(updateStats, 5000));
+    ctx.intervals.push(setInterval(updateStats, ctx.config.intervalleMs || 5000));
 }
 
 // ------------------------------------------------------------------
@@ -203,8 +204,8 @@ function renderQuranTemplate() {
     `);
 }
 
-async function updateQuran() {
-    const data = await fetchJson('/api/quran');
+async function updateQuran(maxAgeSec = 3600) {
+    const data = await fetchJson(`/api/quran?maxAgeSec=${maxAgeSec}`);
     if (!data || data.status !== 'OK') return;
 
     document.getElementById('quran-text').innerText = data.data.text;
@@ -218,8 +219,13 @@ async function updateQuran() {
 }
 
 function startQuranInto(ctx) {
-    updateQuran();
-    ctx.intervals.push(setInterval(updateQuran, 3600 * 1000));
+    // config.intervalleMs : temps entre deux versets (défaut 1 h). Le serveur
+    // aligne la fraîcheur de son cache sur cet intervalle (plancher 60 s).
+    const intervalMs = Math.max(60 * 1000, ctx.config.intervalleMs || 3600 * 1000);
+    const maxAgeSec = Math.round(intervalMs / 1000);
+    const tick = () => updateQuran(maxAgeSec);
+    tick();
+    ctx.intervals.push(setInterval(tick, intervalMs));
 }
 
 // ------------------------------------------------------------------
@@ -321,7 +327,7 @@ function renderPrayers() {
 
 function startPrayersInto(ctx) {
     fetchPrayers();
-    ctx.intervals.push(setInterval(fetchPrayers, 12 * 3600 * 1000));
+    ctx.intervals.push(setInterval(fetchPrayers, ctx.config.intervalleMs || 12 * 3600 * 1000));
     ctx.intervals.push(setInterval(renderPrayers, 60 * 1000));
 }
 
@@ -441,7 +447,7 @@ async function controlService(service, action) {
 
 function startHijriServicesInto(ctx) {
     updateServicesStatus();
-    ctx.intervals.push(setInterval(updateServicesStatus, 12 * 3600 * 1000));
+    ctx.intervals.push(setInterval(updateServicesStatus, ctx.config.intervalleMs || 12 * 3600 * 1000));
 }
 
 // ------------------------------------------------------------------

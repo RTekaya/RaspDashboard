@@ -10,27 +10,32 @@ export const BUILTIN_TYPES = {
     },
     weather: {
         label: 'Météo',
-        description: 'Température actuelle et prévisions (via /api/weather, Open-Meteo).',
+        description: 'Température actuelle et prévisions (via /api/weather, Open-Meteo). ' +
+            'Config : { "intervalleMs": 1800000 } — rafraîchissement (défaut 30 min, borné par le cache serveur de 30 min).',
         defaultZone: 'left',
     },
     stats: {
         label: 'Stats système',
-        description: 'CPU, RAM et espace disque du Raspberry (via /api/stats).',
+        description: 'CPU, RAM et espace disque du Raspberry (via /api/stats). ' +
+            'Config : { "intervalleMs": 5000 } — rafraîchissement (défaut 5 s).',
         defaultZone: 'left',
     },
     quran: {
         label: 'Verset du Coran',
-        description: 'Un verset aléatoire, renouvelé chaque heure (via /api/quran).',
+        description: 'Un verset aléatoire (via /api/quran). ' +
+            'Config : { "intervalleMs": 3600000 } — temps entre deux versets (défaut 1 h, minimum 1 min).',
         defaultZone: 'top',
     },
     prayers: {
         label: 'Heures de prière',
-        description: 'Les six horaires du jour, avec la prochaine prière mise en avant (via /api/prayers).',
+        description: 'Les six horaires du jour, avec la prochaine prière mise en avant (via /api/prayers). ' +
+            'Config : { "intervalleMs": 43200000 } — récupération des horaires (défaut 12 h).',
         defaultZone: 'right',
     },
     hijri_services: {
         label: 'Date hijri & services',
-        description: 'Date hijri, phase de lune et boutons de contrôle Jellyfin / n8n.',
+        description: 'Date hijri, phase de lune et boutons de contrôle Jellyfin / n8n. ' +
+            'Config : { "intervalleMs": 43200000 } — vérification du statut des services (défaut 12 h).',
         defaultZone: 'right',
     },
 };
@@ -213,6 +218,94 @@ ctx.every(ctx.config.intervalleMs || 60000, () => {
                 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ',
                 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
                 'سُبْحَانَ اللَّهِ وَالْحَمْدُ لِلَّهِ وَلَا إِلَٰهَ إِلَّا اللَّهُ وَاللَّهُ أَكْبَرُ',
+            ],
+        },
+    },
+    {
+        id: 'hadith',
+        label: 'Hadith en rotation',
+        name: 'Hadith',
+        html: `<div class="hadith">
+    <div class="hadith-text" id="hadith-text" dir="rtl">…</div>
+    <div class="hadith-source" id="hadith-source" dir="rtl"></div>
+</div>`,
+        css: `.hadith {
+    text-align: center;
+}
+
+.hadith-text {
+    font-family: 'Amiri', serif;
+    font-size: 1.1rem;
+    line-height: 1.45;
+    max-height: 50px; /* 2 lignes max : la police se réduit, sinon coupe */
+    overflow: hidden;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+    transition: opacity 0.4s;
+}
+
+.hadith-source {
+    font-family: 'Amiri', serif;
+    font-size: 0.85rem;
+    color: #facc15;
+    margin-top: 4px;
+    transition: opacity 0.4s;
+}
+
+.fade {
+    opacity: 0;
+}`,
+        js: `// Liste de { texte, source } dans la config — modifiable depuis l'admin.
+const DEFAUT = [{ texte: '«إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ»', source: 'متفق عليه' }];
+const liste = (Array.isArray(ctx.config.liste) && ctx.config.liste.length) ? ctx.config.liste : DEFAUT;
+const texteEl = ctx.root.querySelector('#hadith-text');
+const sourceEl = ctx.root.querySelector('#hadith-source');
+let i = -1;
+let pret = false;
+
+// Réduit la police jusqu'à ce que le hadith tienne dans 2 lignes,
+// pour que la hauteur du panneau ne varie jamais.
+function afficher(h) {
+    texteEl.style.fontSize = '';
+    texteEl.textContent = h.texte;
+    sourceEl.textContent = h.source || '';
+    let taille = 1.1;
+    while (texteEl.scrollHeight > texteEl.clientHeight && taille > 0.8) {
+        taille -= 0.05;
+        texteEl.style.fontSize = taille + 'rem';
+    }
+}
+
+ctx.every(ctx.config.intervalleMs || 300000, () => {
+    i = ctx.config.aleatoire
+        ? Math.floor(Math.random() * liste.length)
+        : (i + 1) % liste.length;
+    if (!pret) {
+        pret = true;
+        afficher(liste[i]);
+        return;
+    }
+    texteEl.classList.add('fade');
+    sourceEl.classList.add('fade');
+    setTimeout(() => {
+        afficher(liste[i]);
+        texteEl.classList.remove('fade');
+        sourceEl.classList.remove('fade');
+    }, 400);
+});`,
+        config: {
+            intervalleMs: 300000,
+            aleatoire: false,
+            liste: [
+                { texte: '«إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى»', source: 'متفق عليه' },
+                { texte: '«مَنْ كَانَ يُؤْمِنُ بِاللَّهِ وَالْيَوْمِ الآخِرِ فَلْيَقُلْ خَيْرًا أَوْ لِيَصْمُتْ»', source: 'متفق عليه' },
+                { texte: '«لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ»', source: 'متفق عليه' },
+                { texte: '«الدِّينُ النَّصِيحَةُ»', source: 'رواه مسلم' },
+                { texte: '«مَنْ سَلَكَ طَرِيقًا يَلْتَمِسُ فِيهِ عِلْمًا سَهَّلَ اللَّهُ لَهُ بِهِ طَرِيقًا إِلَى الْجَنَّةِ»', source: 'رواه مسلم' },
+                { texte: '«الطُّهُورُ شَطْرُ الإِيمَانِ»', source: 'رواه مسلم' },
+                { texte: '«تَبَسُّمُكَ فِي وَجْهِ أَخِيكَ لَكَ صَدَقَةٌ»', source: 'رواه الترمذي' },
+                { texte: '«الْكَلِمَةُ الطَّيِّبَةُ صَدَقَةٌ»', source: 'متفق عليه' },
+                { texte: '«خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ»', source: 'رواه البخاري' },
+                { texte: '«مَنْ لَا يَرْحَمُ النَّاسَ لَا يَرْحَمُهُ اللَّهُ»', source: 'متفق عليه' },
             ],
         },
     },

@@ -94,8 +94,15 @@ app.get('/api/prayers', async (req, res) => {
 
 app.get('/api/quran', async (req, res) => {
     try {
+        // Le composant peut demander un verset plus frais que le cache par
+        // défaut (config intervalleMs côté dashboard). Plancher à 60 s pour
+        // ménager l'API externe.
+        const maxAgeSec = Math.max(60, Number(req.query.maxAgeSec) || 3600);
         const cacheKey = 'quran';
-        if (quranCache.has(cacheKey)) return res.json(quranCache.get(cacheKey));
+        const cached = quranCache.get(cacheKey);
+        if (cached && (Date.now() - cached.fetchedAt) / 1000 < maxAgeSec) {
+            return res.json(cached.data);
+        }
 
         // Pick random verse 1 to 6236
         const randomAyah = Math.floor(Math.random() * 6236) + 1;
@@ -104,7 +111,7 @@ app.get('/api/quran', async (req, res) => {
         const response = await fetch(url);
         const data = await response.json();
 
-        quranCache.set(cacheKey, data);
+        quranCache.set(cacheKey, { data, fetchedAt: Date.now() });
         res.json(data);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch random Ayah' });

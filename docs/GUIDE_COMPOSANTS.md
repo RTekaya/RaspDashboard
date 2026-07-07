@@ -86,6 +86,21 @@ Pour chaque composant :
 Un type intégré déjà présent est grisé (une seule instance possible, leurs éléments
 HTML utilisent des ids globaux).
 
+### Configurer un type intégré
+
+Les types intégrés se règlent via ✎ Modifier → onglet **Config (JSON)**, avec la
+clé `intervalleMs` (millisecondes). Le changement s'applique instantanément :
+
+| Type | `intervalleMs` contrôle | Défaut | Remarque |
+|---|---|---|---|
+| `quran` | le temps entre deux versets | 1 h | minimum 1 min ; le cache serveur suit automatiquement |
+| `weather` | le rafraîchissement | 30 min | le cache serveur reste de 30 min (inutile de descendre en dessous) |
+| `stats` | le rafraîchissement CPU/RAM/disque | 5 s | |
+| `prayers` | la récupération des horaires | 12 h | l'affichage de la prochaine prière se met à jour chaque minute quoi qu'il arrive |
+| `hijri_services` | la vérification du statut Jellyfin/n8n | 12 h | |
+
+Exemple — un verset toutes les 10 minutes : `{ "intervalleMs": 600000 }`.
+
 ## 4. Créer un composant from scratch
 
 « ＋ Nouveau composant » → **Composant custom**. L'éditeur s'ouvre avec un exemple
