@@ -89,7 +89,7 @@ const wmoCodes = {
 
 async function updateWeather() {
     const data = await fetchJson('/api/weather');
-    if (!data) return;
+    if (!data || !data.current_weather || !data.daily) return;
 
     const currentTemp = Math.round(data.current_weather.temperature);
     const weatherCode = data.current_weather.weathercode;
@@ -119,6 +119,14 @@ async function updateStats() {
     document.getElementById('cpu-progress').style.width = `${data.cpu}%`;
     // change color if CPU is high
     document.getElementById('cpu-progress').style.backgroundColor = data.cpu > 80 ? '#ef4444' : '#4ade80';
+
+    if (data.temp !== null && data.temp !== undefined) {
+        document.getElementById('temp-val').innerText = `${data.temp}°C`;
+        document.getElementById('temp-progress').style.width = `${Math.min(data.temp, 100)}%`;
+        document.getElementById('temp-progress').style.backgroundColor = data.temp > 70 ? '#ef4444' : '#4ade80';
+    } else {
+        document.getElementById('temp-val').innerText = `--`;
+    }
 
     document.getElementById('ram-val').innerText = `${data.ram}%`;
     document.getElementById('ram-progress').style.width = `${data.ram}%`;

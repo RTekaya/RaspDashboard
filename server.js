@@ -57,6 +57,11 @@ function getCpuUsage() {
 
 // Routes API
 
+// Open-Meteo répond parfois 429/5xx avec un corps JSON d'erreur
+// ({"error":true,"reason":"The service is overloaded"}). Sans validation,
+// ce corps finissait en cache 30 min et le widget restait vide.
+let lastWeather = null; // dernière réponse valide, servie en secours
+
 app.get('/api/weather', async (req, res) => {
     try {
         const cacheKey = 'weather';
@@ -66,10 +71,21 @@ app.get('/api/weather', async (req, res) => {
         const url = 'https://api.open-meteo.com/v1/forecast?latitude=48.864202&longitude=2.486464&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=Europe/Paris';
         const response = await fetch(url);
         const data = await response.json();
+        if (!response.ok || !data.current_weather || !data.daily) {
+            throw new Error(`Open-Meteo: ${data.reason || `HTTP ${response.status}`}`);
+        }
 
         weatherCache.set(cacheKey, data);
+        lastWeather = data;
         res.json(data);
     } catch (err) {
+        console.error(`[RaspDash] /api/weather failed: ${err.message}`);
+        if (lastWeather) {
+            // Donnée périmée plutôt que panneau vide ; TTL court pour
+            // réessayer sans marteler l'API pendant l'incident.
+            weatherCache.set('weather', lastWeather, 120);
+            return res.json(lastWeather);
+        }
         res.status(500).json({ error: 'Failed to fetch weather' });
     }
 });
@@ -84,10 +100,16 @@ app.get('/api/prayers', async (req, res) => {
         const url = 'http://api.aladhan.com/v1/timingsByCity?city=Paris&country=France&method=99&methodSettings=18,null,15';
         const response = await fetch(url);
         const data = await response.json();
+        // Même piège qu'Open-Meteo : ne pas cacher un corps d'erreur
+        // (ici pendant 24 h !).
+        if (!response.ok || !data.data) {
+            throw new Error(`Aladhan: HTTP ${response.status}`);
+        }
 
         prayerCache.set(cacheKey, data);
         res.json(data);
     } catch (err) {
+        console.error(`[RaspDash] /api/prayers failed: ${err.message}`);
         res.status(500).json({ error: 'Failed to fetch prayer times' });
     }
 });
@@ -110,10 +132,14 @@ app.get('/api/quran', async (req, res) => {
 
         const response = await fetch(url);
         const data = await response.json();
+        if (!response.ok || !data.data) {
+            throw new Error(`AlQuran: HTTP ${response.status}`);
+        }
 
         quranCache.set(cacheKey, { data, fetchedAt: Date.now() });
         res.json(data);
     } catch (err) {
+        console.error(`[RaspDash] /api/quran failed: ${err.message}`);
         res.status(500).json({ error: 'Failed to fetch random Ayah' });
     }
 });
@@ -211,12 +237,26 @@ app.post('/api/n8n_control', async (req, res) => {
     }
 });
 
+const fs = require('fs');
+
+// Température du SoC (Raspberry Pi) : /sys/class/thermal/thermal_zone0/temp
+// contient la valeur en millidegrés Celsius. Absent sur un hôte non-Pi.
+function getCpuTemp() {
+    try {
+        const raw = fs.readFileSync('/sys/class/thermal/thermal_zone0/temp', 'utf8');
+        return Math.round(parseInt(raw.trim(), 10) / 1000);
+    } catch (e) {
+        return null;
+    }
+}
+
 app.get('/api/stats', async (req, res) => {
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
     const usedMem = totalMem - freeMem;
     const ramUsagePercent = Math.round((usedMem / totalMem) * 100);
     const cpuUsagePercent = getCpuUsage();
+    const cpuTemp = getCpuTemp();
 
     let diskFree = 'N/A';
     let diskPercent = 0;
@@ -233,6 +273,7 @@ app.get('/api/stats', async (req, res) => {
 
     res.json({
         cpu: cpuUsagePercent,
+        temp: cpuTemp,
         ram: ramUsagePercent,
         diskFree: diskFree,
         diskPercent: diskPercent

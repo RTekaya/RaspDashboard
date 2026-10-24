@@ -176,7 +176,9 @@ function renderWeatherTemplate() {
 
 async function updateWeather() {
     const data = await fetchJson('/api/weather');
-    if (!data) return;
+    // Payload incomplet (erreur amont relayée) : on garde l'affichage
+    // actuel plutôt que de planter et figer le widget.
+    if (!data || !data.current_weather || !data.daily) return;
 
     const currentTemp = Math.round(data.current_weather.temperature);
     const weatherCode = data.current_weather.weathercode;
@@ -212,6 +214,13 @@ function renderStatsTemplate() {
                 <span id="cpu-val" class="stat-val">--%</span>
             </div>
             <div class="stat-item">
+                <span>TEMP</span>
+                <div class="progress-bar">
+                    <div class="progress" id="temp-progress"></div>
+                </div>
+                <span id="temp-val" class="stat-val">--°C</span>
+            </div>
+            <div class="stat-item">
                 <span>RAM</span>
                 <div class="progress-bar">
                     <div class="progress" id="ram-progress"></div>
@@ -236,6 +245,14 @@ async function updateStats() {
     document.getElementById('cpu-val').innerText = `${data.cpu}%`;
     document.getElementById('cpu-progress').style.width = `${data.cpu}%`;
     document.getElementById('cpu-progress').style.backgroundColor = data.cpu > 80 ? '#ef4444' : '#4ade80';
+
+    if (data.temp !== null && data.temp !== undefined) {
+        document.getElementById('temp-val').innerText = `${data.temp}°C`;
+        document.getElementById('temp-progress').style.width = `${Math.min(data.temp, 100)}%`;
+        document.getElementById('temp-progress').style.backgroundColor = data.temp > 70 ? '#ef4444' : '#4ade80';
+    } else {
+        document.getElementById('temp-val').innerText = `--`;
+    }
 
     document.getElementById('ram-val').innerText = `${data.ram}%`;
     document.getElementById('ram-progress').style.width = `${data.ram}%`;
